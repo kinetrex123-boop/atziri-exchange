@@ -8,8 +8,13 @@
 <script setup lang="ts">
 import { shallowRef } from "vue";
 import MarketPrices from "./MarketPrices.vue";
+import { usePoeninja } from "@/web/background/Prices";
+import { useLeagues } from "@/web/background/Leagues";
 
 document.title = "Atziri Exchange";
+// same start-up as the overlay: league list, then poe.ninja prices
+usePoeninja();
+useLeagues().load();
 // refresh prices only while the window is shown
 const visible = shallowRef(!document.hidden);
 document.addEventListener("visibilitychange", () => {
