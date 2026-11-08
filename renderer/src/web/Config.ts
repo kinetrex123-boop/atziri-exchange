@@ -107,6 +107,19 @@ export function atziriMigrations() {
   } catch {
     // ignore unavailable storage
   }
+  // "Press Shift + Space" message when the game starts: off by default
+  // (it sometimes stayed stuck); can be turned back on in Settings > General
+  try {
+    if (!localStorage.getItem("atziri-no-attach-msg")) {
+      localStorage.setItem("atziri-no-attach-msg", "1");
+      if (AppConfig().showAttachNotification) {
+        AppConfig().showAttachNotification = false;
+        saveConfig();
+      }
+    }
+  } catch {
+    // ignore unavailable storage
+  }
   // Farm tab: "add loot to the current map" hotkey, Ctrl + T by default
   const itemCheck = AppConfig("item-check") as ItemCheckWidget | undefined;
   if (itemCheck && itemCheck.atziriFarmKey === undefined) {
