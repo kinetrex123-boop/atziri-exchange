@@ -340,7 +340,9 @@ export default defineComponent({
     watch(
       topmostOrExclusiveWidget,
       (widget, wasWidget) => {
-        showEditingNotification.value = widget.wmType === "settings";
+        // Atziri Exchange: no "press Shift + Space to continue editing" banner
+        // (it stayed on screen in game when the settings were left open)
+        showEditingNotification.value = false;
         // TODO: hack, should find a better way to save config
         if (
           wasWidget &&
@@ -467,12 +469,6 @@ export default defineComponent({
     function isVisible(wmId: Widget["wmId"]): boolean {
       return visibilityState.value.find((_) => _.wmId === wmId)!.isVisible;
     }
-
-    document.addEventListener("click", (e) => {
-      if (e.target instanceof HTMLInputElement && e.target.type === "file") {
-        showEditingNotification.value = true;
-      }
-    });
 
     function sliceLastLines(text: string, numLines: number) {
       let lfIndex = text.length - 1;

@@ -120,6 +120,22 @@ export function atziriMigrations() {
   } catch {
     // ignore unavailable storage
   }
+  // price check hotkey back to Ctrl + D (once; can be changed again later)
+  try {
+    if (!localStorage.getItem("atziri-ctrl-d")) {
+      localStorage.setItem("atziri-ctrl-d", "1");
+      const pc = AppConfig("price-check") as
+        | { hotkey: string | null; hotkeyHold: string }
+        | undefined;
+      if (pc && (pc.hotkey !== "D" || pc.hotkeyHold !== "Ctrl")) {
+        pc.hotkey = "D";
+        pc.hotkeyHold = "Ctrl";
+        saveConfig();
+      }
+    }
+  } catch {
+    // ignore unavailable storage
+  }
   // Farm tab: "add loot to the current map" hotkey, Ctrl + T by default
   const itemCheck = AppConfig("item-check") as ItemCheckWidget | undefined;
   if (itemCheck && itemCheck.atziriFarmKey === undefined) {
