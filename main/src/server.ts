@@ -155,7 +155,8 @@ export const eventPipe = {
 };
 
 server.on("upgrade", (req, socket, head) => {
-  if (req.url !== "/events") {
+  // Atziri Exchange: "/events?hub=1" is the detached Shift + Space window
+  if (req.url !== "/events" && req.url !== "/events?hub=1") {
     return req.destroy();
   }
   websocketServer.handleUpgrade(req, socket, head, (ws) => {
@@ -169,8 +170,10 @@ export async function startServer(
 ): Promise<number> {
   const configStore = new ConfigStore(eventPipe);
 
-  websocketServer.on("connection", (socket) => {
-    lastActiveClient = socket;
+  websocketServer.on("connection", (socket, req: IncomingMessage) => {
+    // the detached window never takes over the hotkey results (Ctrl + D...)
+    const isHub = req.url === "/events?hub=1";
+    if (!isHub || !lastActiveClient) lastActiveClient = socket;
     socket.on("message", (bytes) => {
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const event = JSON.parse(bytes.toString("utf-8")) as IpcEvent;

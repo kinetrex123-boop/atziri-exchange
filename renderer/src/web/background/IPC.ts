@@ -22,7 +22,10 @@ class HostTransport {
       this.updateInfo.value = info;
     });
     await new Promise((resolve) => {
-      this.socket = new Sockette(`ws://${window.location.host}/events`, {
+      // Atziri Exchange: the detached window says so, so that hotkey results
+      // (Ctrl + D...) keep going to the in-game overlay
+      const hub = window.location.search.includes("atziri=hub");
+      this.socket = new Sockette(`ws://${window.location.host}/events${hub ? "?hub=1" : ""}`, {
         onmessage: (e) => {
           this.selfDispatch(JSON.parse(e.data));
         },
