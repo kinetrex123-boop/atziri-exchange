@@ -107,6 +107,12 @@ export function atziriMigrations() {
   } catch {
     // ignore unavailable storage
   }
+  // Farm tab: "add loot to the current map" hotkey, Ctrl + T by default
+  const itemCheck = AppConfig("item-check") as ItemCheckWidget | undefined;
+  if (itemCheck && itemCheck.atziriFarmKey === undefined) {
+    itemCheck.atziriFarmKey = "Ctrl + T";
+    saveConfig();
+  }
 }
 
 export function poeWebApi() {
@@ -754,6 +760,12 @@ function getConfigForHost(): HostConfig {
     actions.push({
       shortcut: itemCheck.poedbKey,
       action: { type: "copy-item", target: "open-poedb", focusOverlay: true },
+    });
+  }
+  if (itemCheck.atziriFarmKey) {
+    actions.push({
+      shortcut: itemCheck.atziriFarmKey,
+      action: { type: "copy-item", target: "atziri-farm-loot" },
     });
   }
   if (itemCheck.stashSearchKey) {

@@ -1,11 +1,17 @@
 <template>
   <div id="app" class="text-sm font-poe-sc">
-    <OverlayWindow />
+    <!-- Atziri Exchange: detached Shift + Space page (second screen) -->
+    <HubWindow v-if="detachedHub" />
+    <OverlayWindow v-else />
   </div>
 </template>
 
 <script setup lang="ts">
 import OverlayWindow from "./overlay/OverlayWindow.vue";
+import HubWindow from "./overlay/HubWindow.vue";
+import { isDetachedHub } from "./overlay/atziri-hub";
+
+const detachedHub = isDetachedHub();
 </script>
 
 <style lang="postcss">

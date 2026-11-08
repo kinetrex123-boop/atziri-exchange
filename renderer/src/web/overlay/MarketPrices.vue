@@ -2,10 +2,25 @@
   <!-- Atziri Exchange: Shift + Space hub, styled exactly like the Atziri Regex page (skin "braise") -->
   <div class="ar-hub" @click.stop>
     <header class="ar-top">
-      <button type="button" class="ar-settings-btn" @click="openSettings">
-        <i class="fas fa-cog"></i>
-        <span>{{ tr("Paramètres", "Settings") }}</span>
-      </button>
+      <div class="ar-settings-btn ar-top-actions">
+        <button v-if="!isHubWindow" type="button" @click="openSettings">
+          <i class="fas fa-cog"></i>
+          <span>{{ tr("Paramètres", "Settings") }}</span>
+        </button>
+        <!-- own window, movable to a second screen -->
+        <button
+          type="button"
+          :title="
+            isHubWindow
+              ? tr('Remettre la page dans l\'overlay du jeu', 'Put the page back into the game overlay')
+              : tr('Ouvrir cette page dans sa propre fenêtre (2e écran…)', 'Open this page in its own window (second screen…)')
+          "
+          @click="toggleDetach"
+        >
+          <i :class="isHubWindow ? 'fas fa-compress-alt' : 'fas fa-external-link-square-alt'"></i>
+          <span>{{ isHubWindow ? tr("Rattacher", "Attach") : tr("Détacher", "Detach") }}</span>
+        </button>
+      </div>
       <div class="ar-brand">
         <img class="ar-logo" src="/icon.png" alt="" width="64" height="64" />
         <h1 class="ar-h1">{{ activeTabLabel }}</h1>
@@ -33,13 +48,15 @@
         >
           <i class="fas ar-tabfa" :class="tab.icon"></i>{{ tab.label }}
         </button>
+        <!-- Farm journal (replaces the Atziri Regex tab for now: RegexPane.vue
+             is kept, put the tab back here to restore it) -->
         <button
           type="button"
           role="tab"
-          :aria-selected="hubTab === 'regex'"
-          @click="hubTab = 'regex'"
+          :aria-selected="hubTab === 'farm'"
+          @click="hubTab = 'farm'"
         >
-          <img class="ar-tabico" src="/icon.png" alt="" />Atziri Regex
+          <i class="fas fa-map ar-tabfa"></i>Farm
         </button>
         <!-- Historique: icon only, far right -->
         <button
@@ -80,7 +97,7 @@
       :tab="tab"
     />
 
-    <RegexPane v-show="hubTab === 'regex'" />
+    <FarmPane v-show="hubTab === 'farm'" />
     <HistoryPane v-if="hubTab === 'history'" />
 
     <div v-show="hubTab === 'market'" class="ar-body">
@@ -272,10 +289,10 @@ import {
 import { AppConfig } from "@/web/Config";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
 import type { WidgetManager } from "./interfaces";
-import { hubTab, WEB_TABS, openInHub } from "./atziri-hub";
+import { hubTab, WEB_TABS, openInHub, isDetachedHub } from "./atziri-hub";
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
-import RegexPane from "./RegexPane.vue";
+import FarmPane from "./FarmPane.vue";
 import HistoryPane from "./HistoryPane.vue";
 import ConverterBox from "./ConverterBox.vue";
 import { setRates } from "./atziri-money";
@@ -455,7 +472,7 @@ watch(
 // Hub title follows the active tab
 const activeTabLabel = computed(() => {
   if (hubTab.value === "market") return "Economy";
-  if (hubTab.value === "regex") return "Atziri Regex";
+  if (hubTab.value === "farm") return "Farm";
   if (hubTab.value === "history") return tr("Historique", "History");
   return WEB_TABS.find((t) => t.id === hubTab.value)?.label ?? "";
 });
@@ -466,6 +483,22 @@ const FAV_TYPE = "__favorites";
 function openSettings() {
   const settings = AppConfig().widgets.find((w) => w.wmType === "settings");
   if (settings) wm.show(settings.wmId);
+}
+
+// --- Own window (second screen): opened / closed by the main process ---
+const isHubWindow = isDetachedHub();
+async function toggleDetach() {
+  try {
+    await fetch(isHubWindow ? "/atziri-hub/attach" : "/atziri-hub/detach", {
+      method: "POST",
+    });
+  } catch {
+    return; // dev mode: no main-process routes
+  }
+  if (!isHubWindow) {
+    // the page now lives in its own window: give the game the focus back
+    Host.sendEvent({ name: "OVERLAY->MAIN::focus-game", payload: undefined });
+  }
 }
 
 const selectedType = shallowRef("Currency");
@@ -988,7 +1021,20 @@ const rows = computed(() => {
   color: var(--muted);
 }
 
-.ar-hub .ar-settings-btn:hover {
+.ar-hub .ar-top-actions {
+  padding: 0;
+  gap: 4px;
+}
+
+.ar-hub .ar-top-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: var(--muted);
+}
+
+.ar-hub .ar-top-actions button:hover {
   color: var(--accent);
 }
 

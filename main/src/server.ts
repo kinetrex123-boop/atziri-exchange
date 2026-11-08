@@ -88,7 +88,9 @@ if (!process.env.VITE_DEV_SERVER_URL) {
     )
       return;
 
-    const filePath = req.url === "/" ? "/index.html" : req.url!;
+    // Atziri Exchange: ignore "?query" (detached window: index.html?atziri=hub)
+    const urlPath = decodeURIComponent((req.url ?? "/").split("?")[0]);
+    const filePath = urlPath === "/" ? "/index.html" : urlPath;
     switch (path.extname(filePath)) {
       case ".html":
         res.setHeader("content-type", "text/html");
@@ -104,7 +106,19 @@ if (!process.env.VITE_DEV_SERVER_URL) {
         break;
     }
 
-    fs.createReadStream(path.join(__dirname, filePath)).pipe(res);
+    // only files of the app folder, and a 404 (not a stuck request) if missing
+    const full = path.join(__dirname, filePath);
+    if (!full.startsWith(path.join(__dirname, path.sep)) && full !== __dirname) {
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+    const stream = fs.createReadStream(full);
+    stream.on("error", () => {
+      if (!res.headersSent) res.statusCode = 404;
+      res.end();
+    });
+    stream.pipe(res);
   });
 }
 

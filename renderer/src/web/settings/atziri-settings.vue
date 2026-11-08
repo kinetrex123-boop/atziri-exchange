@@ -132,6 +132,12 @@
         <label class="flex-1">{{ t("item.open_on_poedb") }}</label>
         <hotkey-input v-model="poedbKey" class="w-48" />
       </div>
+      <div class="flex">
+        <label class="flex-1">{{
+          tr("Ajouter l'objet aux loots (onglet Farm)", "Add the item to the loots (Farm tab)")
+        }}</label>
+        <hotkey-input v-model="farmKey" class="w-48" />
+      </div>
       <HotkeysGeneric :hotkeys="priceCheckHotkeys" />
     </div>
 
@@ -599,6 +605,7 @@ const tooltipHover = configModelValue(
   "itemHoverTooltip",
 );
 const poedbKey = configModelValue(() => itemCheck.value, "poedbKey");
+const farmKey = configModelValue(() => itemCheck.value, "atziriFarmKey");
 
 const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
   {

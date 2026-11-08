@@ -4,7 +4,7 @@ import { isFrench } from "@/web/atziri-lang";
 import { poeWebApi } from "@/web/Config";
 
 export type WebTabId = "poedb" | "craft" | "ninja" | "trade" | "regexeng";
-export type HubTab = "market" | "regex" | "history" | WebTabId;
+export type HubTab = "market" | "regex" | "farm" | "history" | WebTabId;
 
 export interface WebTab {
   id: WebTabId;
@@ -127,4 +127,13 @@ export function openInHub(url: string, tab: WebTabId = "poedb") {
 export function rememberTabUrl(tab: WebTabId, url: string) {
   if (webTabUrls.value[tab] === url) return;
   webTabUrls.value = { ...webTabUrls.value, [tab]: url };
+}
+
+/** True in the detached window (Shift + Space page opened on its own) */
+export function isDetachedHub(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get("atziri") === "hub";
+  } catch {
+    return false;
+  }
 }

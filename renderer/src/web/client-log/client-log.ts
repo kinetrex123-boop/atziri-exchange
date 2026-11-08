@@ -11,6 +11,14 @@ import {
 const LogRegex =
   /^(?<datetime>\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}) (?<millis>\d+) (?<source>[a-f0-9]+) \[\S+ \S+ \S+\] (?<text>.*)$/;
 
+// Atziri Exchange: zone changes for the Farm tab (auto timer per map)
+type AtziriLogListener = (e: ClientLogEvent) => void;
+const atziriLogListeners = new Set<AtziriLogListener>();
+export function onAtziriLogEvent(cb: AtziriLogListener) {
+  atziriLogListeners.add(cb);
+  return () => atziriLogListeners.delete(cb);
+}
+
 export const useClientLog = createGlobalState(() => {
   const areaLevel = shallowRef<number>(1);
   const zoneName = shallowRef<string>("G1_1"); // default to riverbank
@@ -48,6 +56,18 @@ export const useClientLog = createGlobalState(() => {
   }
 
   function updateRefsFromData(data: ClientLogEvent) {
+    if (
+      data.type === ClientLogInfoType.LoadZone ||
+      data.type === ClientLogInfoType.MapNav
+    ) {
+      for (const cb of atziriLogListeners) {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
     if (data.type === ClientLogInfoType.GameStart) {
       gameStartMillis = data.ms;
     } else if (data.type === ClientLogInfoType.LoadZone) {

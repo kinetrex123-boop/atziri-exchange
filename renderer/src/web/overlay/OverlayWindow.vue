@@ -102,6 +102,7 @@ import { useLeagues } from "@/web/background/Leagues";
 import { useClientLog } from "@/web/client-log/client-log";
 import DevWidget from "./DevWidget.vue";
 import MarketPrices from "./MarketPrices.vue";
+import { initFarmCapture } from "./atziri-farm-capture";
 
 type WMID = Widget["wmId"];
 
@@ -115,6 +116,8 @@ export default defineComponent({
     usePoeninja();
     useLeagues().load();
     const { handleLine } = useClientLog();
+    // Atziri Exchange: Farm tab timer and loot hotkey (overlay only)
+    initFarmCapture();
 
     const active = shallowRef(!Host.isElectron);
     const gameFocused = shallowRef(false);
@@ -451,6 +454,14 @@ export default defineComponent({
       return !AppConfig().widgets.some(
         (w) => w.wmType === "price-check" && w.wmWants === "show",
       );
+    });
+
+    // Atziri Exchange: Shift + Space puts a detached page back into the overlay
+    watch(atziriFrame, (open) => {
+      if (!open) return;
+      fetch("/atziri-hub/attach", { method: "POST" }).catch(() => {
+        // dev mode: no main-process routes
+      });
     });
 
     function isVisible(wmId: Widget["wmId"]): boolean {

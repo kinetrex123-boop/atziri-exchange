@@ -5,6 +5,8 @@ export interface ItemCheckWidget extends Widget {
   hotkey: string | null;
   wikiKey: string | null;
   poedbKey: string | null;
+  // Atziri Exchange: adds the hovered item to the Farm tab (current map)
+  atziriFarmKey?: string | null;
   craftOfExileKey: string | null;
   stashSearchKey: string | null;
   samePricedKey: string | null;
