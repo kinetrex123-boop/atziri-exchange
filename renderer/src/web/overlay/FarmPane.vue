@@ -108,9 +108,12 @@
             type="text"
             inputmode="decimal"
             class="ar-search fm-num fm-invest"
-            :value="sess.invested ? num(sess.invested) : ''"
+            :value="shown('invest', sess.invested ? num(sess.invested) : '')"
             placeholder="0"
-            @change="setInvested(parseNum(($event.target as HTMLInputElement).value) ?? 0)"
+            @focus="startEdit('invest', $event)"
+            @input="typed('invest', $event, (v) => setInvested(parseNum(v) ?? 0))"
+            @blur="endEdit"
+            @keydown.enter="($event.target as HTMLInputElement).blur()"
           />
         </div>
         <div class="fm-kpi">
@@ -177,8 +180,11 @@
                 inputmode="decimal"
                 class="ar-search fm-num"
                 :class="{ 'fm-wait': m.id === waitingId }"
-                :value="m.divines == null ? '' : num(m.divines)"
-                @change="onDivines(m.id, ($event.target as HTMLInputElement).value)"
+                :value="shown(`div-${m.id}`, m.divines == null ? '' : num(m.divines))"
+                @focus="startEdit(`div-${m.id}`, $event)"
+                @input="typed(`div-${m.id}`, $event, (v) => onDivines(m.id, v))"
+                @blur="endEdit"
+                @keydown.enter="($event.target as HTMLInputElement).blur()"
               />
             </span>
             <span class="fm-loots">
@@ -316,6 +322,43 @@ function parseNum(raw: string): number | null {
   if (s === "") return null;
   const v = Number(s);
   return Number.isFinite(v) ? v : null;
+}
+
+// Number boxes: saved while typing (short delay), and the typed text is kept
+// as is until the box is left (so "3," is not turned into "3" mid-typing)
+const editing = shallowRef<string | null>(null);
+const draft = shallowRef("");
+let pending: (() => void) | null = null;
+let pendingKey = "";
+let pendingTimer: ReturnType<typeof setTimeout> | undefined;
+
+function shown(key: string, formatted: string) {
+  return editing.value === key ? draft.value : formatted;
+}
+function startEdit(key: string, e: Event) {
+  editing.value = key;
+  draft.value = (e.target as HTMLInputElement).value;
+}
+function flush() {
+  clearTimeout(pendingTimer);
+  const fn = pending;
+  pending = null;
+  if (fn) fn();
+}
+function typed(key: string, e: Event, commit: (v: string) => void) {
+  const v = (e.target as HTMLInputElement).value;
+  // another box still waiting to be saved: save it first
+  if (pending && pendingKey !== key) flush();
+  pendingKey = key;
+  editing.value = key;
+  draft.value = v;
+  pending = () => commit(v);
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(flush, 300);
+}
+function endEdit() {
+  flush();
+  editing.value = null;
 }
 
 function onDivines(id: number, raw: string) {
