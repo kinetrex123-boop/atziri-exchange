@@ -41,13 +41,23 @@
           <option value="latest">{{ tr("Le dernier build PoB sauvegardé", "Latest saved PoB build") }}</option>
           <option v-for="b in status?.builds ?? []" :key="b.file" :value="b.file">PoB · {{ b.name }}</option>
         </select>
+        <!-- one small refresh button: asks poe.ninja to fetch the character again
+             (when following poe.ninja), then computes the build again -->
+        <button
+          type="button"
+          class="st-icon-btn"
+          :disabled="refreshing"
+          :title="status?.selected === 'ninja' ? tr('Actualiser mon perso sur poe.ninja', 'Refresh my character on poe.ninja') : tr('Recalculer', 'Recompute')"
+          @click="refreshAll"
+        >
+          <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing || loading }"></i>
+        </button>
         <span v-if="build" class="st-muted">
           {{ build.className }}<template v-if="build.ascendancy"> · {{ build.ascendancy }}</template>
           · {{ tr("niv.", "lvl") }} {{ build.level }}
         </span>
         <span v-if="loading" class="st-muted"><i class="fas fa-spinner fa-spin"></i> {{ tr("Calcul…", "Computing…") }}</span>
         <span class="st-sp"></span>
-        <button type="button" class="st-btn" @click="refresh()"><i class="fas fa-redo"></i> {{ tr("Actualiser", "Refresh") }}</button>
         <button v-if="status?.pobFound" type="button" class="st-btn" @click="pobOpen()">{{ tr("Ouvrir PoB", "Open PoB") }}</button>
       </div>
       <!-- poe.ninja character -->
@@ -66,11 +76,8 @@
         <span v-if="status?.ninjaError" class="st-err">{{ status.ninjaError }}</span>
       </div>
       <!-- ask poe.ninja to fetch the character again (its "Refresh character") -->
-      <div v-if="status?.selected === 'ninja' && status.ninja" class="st-ninja">
-        <button type="button" class="st-btn" :disabled="refreshing" @click="ninjaRefresh">
-          <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
-          {{ refreshing ? tr("poe.ninja relit ton perso…", "poe.ninja is fetching…") : tr("Actualiser mon perso sur poe.ninja", "Refresh my character on poe.ninja") }}
-        </button>
+      <div v-if="status?.selected === 'ninja' && status.ninja" class="st-ninja st-small">
+        <span v-if="refreshing" class="st-muted">{{ tr("poe.ninja relit ton perso…", "poe.ninja is fetching your character…") }}</span>
         <label class="st-muted st-check">
           <input type="checkbox" :checked="status.ninjaAuto" @change="setAuto(($event.target as HTMLInputElement).checked)" />
           {{ tr("Automatiquement toutes les 15 min", "Automatically every 15 min") }}
@@ -303,6 +310,11 @@ async function ninjaRefresh() {
   }
   if (refreshOk.value) await refresh();
 }
+/** the small ↻ button: poe.ninja refresh when following poe.ninja, else recompute */
+async function refreshAll() {
+  if (status.value?.selected === "ninja" && status.value.ninja) await ninjaRefresh();
+  else await refresh();
+}
 async function setAuto(on: boolean) {
   try {
     status.value = await pobNinjaAuto(on);
@@ -409,6 +421,28 @@ watch(hubTab, (t) => {
 .st-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+.st-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.st-icon-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.st-icon-btn:disabled {
+  opacity: 0.6;
+}
+.st-small {
+  font-size: 0.8rem;
 }
 .st-muted {
   color: var(--muted);
