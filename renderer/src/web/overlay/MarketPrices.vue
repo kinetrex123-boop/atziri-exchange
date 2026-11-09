@@ -218,9 +218,9 @@
                 </button>
                 <img v-if="row.icon" :src="row.icon" class="ar-icon" />
                 <span
-                  v-if="row.ns === 'UNIQUE'"
+                  v-if="hasTradeLink(row)"
                   class="truncate ar-unique-link"
-                  :title="tr('Voir cet unique sur le site de trade', 'Open this unique on the trade site')"
+                  :title="row.ns === 'UNIQUE' ? tr('Voir cet unique sur le site de trade', 'Open this unique on the trade site') : tr('Voir cet objet sur le site de trade', 'Open this item on the trade site')"
                   @click="openUniqueOnTrade(row)"
                   >{{ row.name }}
                   <i class="fas fa-external-link-alt"></i
@@ -732,7 +732,23 @@ function onDrop(target: string) {
 }
 
 // --- Unique items: open their trade search in the Trade tab ---
+// categories whose lines are a base + rarity ("Temple Tablet", "Rare")
+const BASE_RARITY_TYPES = ["PrecursorTablets"];
+const RARITY_FILTER: Record<string, string> = {
+  Normal: "normal",
+  Magic: "magic",
+  Rare: "rare",
+};
+
+function hasTradeLink(row: Row) {
+  return row.ns === "UNIQUE" || BASE_RARITY_TYPES.includes(row.type);
+}
+
 function openUniqueOnTrade(row: Row) {
+  if (BASE_RARITY_TYPES.includes(row.type)) {
+    openBaseOnTrade(row);
+    return;
+  }
   if (row.ns !== "UNIQUE") return;
   const league = leagues.selectedId.value;
   if (!league) return;
@@ -749,6 +765,32 @@ function openUniqueOnTrade(row: Row) {
   // "Exalted or Divine" price filter, like the Ctrl + D searches
   query.filters = {
     trade_filters: { filters: { price: { option: "exalted_divine" } } },
+  };
+  const q = encodeURIComponent(JSON.stringify({ query }));
+  openInHub(
+    `https://${site}/trade2/search/poe2/${encodeURIComponent(league)}?q=${q}`,
+    "trade",
+  );
+}
+
+// --- Precursor tablets: trade search for the base with that rarity ---
+function openBaseOnTrade(row: Row) {
+  const league = leagues.selectedId.value;
+  if (!league) return;
+  const site = poeWebApi() ?? "www.pathofexile.com";
+  const useEn = site === "www.pathofexile.com";
+  const base = ITEM_BY_REF("ITEM", row.refName)?.[0];
+  const filters: Record<string, unknown> = {
+    trade_filters: { filters: { price: { option: "exalted_divine" } } },
+  };
+  const rarity = row.variant ? RARITY_FILTER[row.variant] : undefined;
+  if (rarity) {
+    filters.type_filters = { filters: { rarity: { option: rarity } } };
+  }
+  const query = {
+    status: { option: "securable" },
+    type: useEn ? row.refName : (base?.name ?? row.refName),
+    filters,
   };
   const q = encodeURIComponent(JSON.stringify({ query }));
   openInHub(
