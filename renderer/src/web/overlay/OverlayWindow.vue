@@ -53,6 +53,7 @@
       >{{ logs }}</pre
     >
     <loading-animation />
+    <PobComparePanel />
     <div
       v-if="showEditingNotification"
       class="widget-default-style p-6 bg-blue-600 mx-auto text-center text-base mt-6"
@@ -103,6 +104,12 @@ import { useClientLog } from "@/web/client-log/client-log";
 import DevWidget from "./DevWidget.vue";
 import MarketPrices from "./MarketPrices.vue";
 import { initFarmCapture } from "./atziri-farm-capture";
+import PobComparePanel from "./PobComparePanel.vue";
+import {
+  initPobCompare,
+  pobCompareState,
+  closePobCompare,
+} from "./atziri-pob-compare";
 
 type WMID = Widget["wmId"];
 
@@ -111,6 +118,7 @@ export default defineComponent({
     LoadingAnimation,
     DevWidget,
     MarketPrices,
+    PobComparePanel,
   },
   setup() {
     usePoeninja();
@@ -118,6 +126,7 @@ export default defineComponent({
     const { handleLine } = useClientLog();
     // Atziri Exchange: Farm tab timer and loot hotkey (overlay only)
     initFarmCapture();
+    initPobCompare();
 
     const active = shallowRef(!Host.isElectron);
     const gameFocused = shallowRef(false);
@@ -160,6 +169,7 @@ export default defineComponent({
 
     Host.onEvent("MAIN->OVERLAY::focus-change", (state) => {
       active.value = state.overlay;
+      if (!state.overlay) closePobCompare();
       gameFocused.value = state.game;
 
       if (active.value === false) {
@@ -451,6 +461,7 @@ export default defineComponent({
     // not while the price check window (Ctrl + D) is open.
     const atziriFrame = computed<boolean>(() => {
       if (!active.value) return false;
+      if (pobCompareState.value) return false; // Ctrl + B panel shown instead
       const bg = AppConfig().overlayBackground;
       if (bg !== "atziri" && bg !== "rgba(129, 139, 149, 0.15)") return false;
       return !AppConfig().widgets.some(

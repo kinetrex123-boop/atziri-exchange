@@ -12,6 +12,10 @@ files:
     to: "."
 extraMetadata:
   main: "main.js"
+# Atziri Exchange: Path of Building bridge (LuaJIT + scripts)
+extraResources:
+  - from: "pob"
+    to: "pob"
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

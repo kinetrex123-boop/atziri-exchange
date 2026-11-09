@@ -7,6 +7,8 @@ export interface ItemCheckWidget extends Widget {
   poedbKey: string | null;
   // Atziri Exchange: adds the hovered item to the Farm tab (current map)
   atziriFarmKey?: string | null;
+  // Atziri Exchange: compares the hovered item with the Path of Building build
+  atziriPobKey?: string | null;
   craftOfExileKey: string | null;
   stashSearchKey: string | null;
   samePricedKey: string | null;

@@ -58,6 +58,15 @@
         >
           <i class="fas fa-map ar-tabfa"></i>Farm
         </button>
+        <!-- Path of Building build -->
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="hubTab === 'stats'"
+          @click="hubTab = 'stats'"
+        >
+          <i class="fas fa-chart-bar ar-tabfa"></i>Stats
+        </button>
         <!-- Historique: icon only, far right -->
         <button
           type="button"
@@ -98,6 +107,7 @@
     />
 
     <FarmPane v-show="hubTab === 'farm'" />
+    <StatsPane v-show="hubTab === 'stats'" />
     <HistoryPane v-if="hubTab === 'history'" />
 
     <div v-show="hubTab === 'market'" class="ar-body">
@@ -293,6 +303,7 @@ import { hubTab, WEB_TABS, openInHub, isDetachedHub } from "./atziri-hub";
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
+import StatsPane from "./StatsPane.vue";
 import HistoryPane from "./HistoryPane.vue";
 import ConverterBox from "./ConverterBox.vue";
 import { setRates } from "./atziri-money";
@@ -473,6 +484,7 @@ watch(
 const activeTabLabel = computed(() => {
   if (hubTab.value === "market") return "Economy";
   if (hubTab.value === "farm") return "Farm";
+  if (hubTab.value === "stats") return "Stats";
   if (hubTab.value === "history") return tr("Historique", "History");
   return WEB_TABS.find((t) => t.id === hubTab.value)?.label ?? "";
 });

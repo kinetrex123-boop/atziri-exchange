@@ -20,6 +20,7 @@ import { enableBrowserAdblock } from "./adblock";
 import { setupAtziriData } from "./atziri-data";
 import { setupAtziriAutostart, isAutostartEnabled } from "./atziri-autostart";
 import { setupAtziriDetach } from "./atziri-detached";
+import { setupAtziriPob } from "./atziri-pob";
 
 if (!app.requestSingleInstanceLock()) {
   app.exit();
@@ -165,6 +166,7 @@ app.on("browser-window-created", (_e, win) => {
         setupAtziriAutostart(server);
         let hubPort = 0;
         setupAtziriDetach(server, () => hubPort);
+        setupAtziriPob(server, logger);
         const port = await startServer(appUpdater, logger);
         hubPort = port;
         // TODO: move up (currently crashes)

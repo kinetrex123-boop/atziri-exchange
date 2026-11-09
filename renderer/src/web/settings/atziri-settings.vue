@@ -138,6 +138,12 @@
         }}</label>
         <hotkey-input v-model="farmKey" class="w-48" />
       </div>
+      <div class="flex">
+        <label class="flex-1">{{
+          tr("Comparer l'objet à mon build PoB", "Compare the item with my PoB build")
+        }}</label>
+        <hotkey-input v-model="pobKey" class="w-48" />
+      </div>
       <HotkeysGeneric :hotkeys="priceCheckHotkeys" />
     </div>
 
@@ -611,6 +617,7 @@ const tooltipHover = configModelValue(
 );
 const poedbKey = configModelValue(() => itemCheck.value, "poedbKey");
 const farmKey = configModelValue(() => itemCheck.value, "atziriFarmKey");
+const pobKey = configModelValue(() => itemCheck.value, "atziriPobKey");
 
 const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
   {

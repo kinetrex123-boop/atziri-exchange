@@ -142,6 +142,11 @@ export function atziriMigrations() {
     itemCheck.atziriFarmKey = "Ctrl + T";
     saveConfig();
   }
+  // Path of Building comparison hotkey, Ctrl + B by default
+  if (itemCheck && itemCheck.atziriPobKey === undefined) {
+    itemCheck.atziriPobKey = "Ctrl + B";
+    saveConfig();
+  }
 }
 
 export function poeWebApi() {
@@ -789,6 +794,12 @@ function getConfigForHost(): HostConfig {
     actions.push({
       shortcut: itemCheck.poedbKey,
       action: { type: "copy-item", target: "open-poedb", focusOverlay: true },
+    });
+  }
+  if (itemCheck.atziriPobKey) {
+    actions.push({
+      shortcut: itemCheck.atziriPobKey,
+      action: { type: "copy-item", target: "atziri-pob-compare", focusOverlay: true },
     });
   }
   if (itemCheck.atziriFarmKey) {

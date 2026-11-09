@@ -235,7 +235,8 @@ export class Shortcuts {
                 if (
                   action.focusOverlay &&
                   (this.overlay.wasUsedRecently ||
-                    action.target === "open-poedb")
+                    action.target === "open-poedb" ||
+                    action.target === "atziri-pob-compare")
                 ) {
                   this.overlay.assertOverlayActive();
                 }
