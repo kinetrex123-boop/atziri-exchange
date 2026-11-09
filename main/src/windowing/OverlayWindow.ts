@@ -61,6 +61,20 @@ export class OverlayWindow {
     );
 
     this.window.webContents.on("before-input-event", this.handleExtraCommands);
+    // Atziri Exchange: the open overlay lost the focus to another program
+    // (second screen...): close it now, while it is hidden, instead of when
+    // the game comes back (it used to flash for a second then)
+    this.window.on("blur", () => {
+      setTimeout(() => {
+        if (!this.isInteractable || this.poeWindow.isActive) return;
+        if (this.window?.isFocused()) return;
+        this.isInteractable = false;
+        this.server.sendEventTo("broadcast", {
+          name: "MAIN->OVERLAY::focus-change",
+          payload: { game: false, overlay: false, usingHotkey: false },
+        });
+      }, 50);
+    });
     // Atziri Exchange: web tabs are plain web pages, never given app powers
     this.window.webContents.on(
       "will-attach-webview",
