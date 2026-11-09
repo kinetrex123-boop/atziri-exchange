@@ -39,7 +39,7 @@
           }}</span>
         </button>
         <button
-          v-for="tab in WEB_TABS"
+          v-for="tab in WEB_TABS.filter((t) => t.id !== 'ninja')"
           :key="tab.id"
           type="button"
           role="tab"
@@ -66,6 +66,17 @@
           @click="hubTab = 'stats'"
         >
           <i class="fas fa-chart-bar ar-tabfa"></i>Stats
+        </button>
+        <!-- poe.ninja right after Stats (builds and economy) -->
+        <button
+          v-for="tab in WEB_TABS.filter((t) => t.id === 'ninja')"
+          :key="tab.id"
+          type="button"
+          role="tab"
+          :aria-selected="hubTab === tab.id"
+          @click="hubTab = tab.id"
+        >
+          <i class="fas ar-tabfa" :class="tab.icon"></i>{{ tab.label }}
         </button>
         <!-- Historique: icon only, far right -->
         <button
