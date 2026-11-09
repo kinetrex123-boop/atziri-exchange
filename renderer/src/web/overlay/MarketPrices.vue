@@ -33,7 +33,7 @@
           :aria-selected="hubTab === 'market'"
           @click="hubTab = 'market'"
         >
-          <img class="ar-tabico" src="/images/tab-marche.webp" alt="" />Economy
+          <i class="fas fa-coins ar-tabfa"></i>Economy
           <span v-if="alertCount" class="ar-badge" :title="tr('Alertes de prix', 'Price alerts')">{{
             alertCount
           }}</span>
