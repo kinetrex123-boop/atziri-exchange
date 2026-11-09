@@ -107,13 +107,13 @@ export function atziriMigrations() {
   } catch {
     // ignore unavailable storage
   }
-  // "Press Shift + Space" message when the game starts: off by default
-  // (it sometimes stayed stuck); can be turned back on in Settings > General
+  // start bubble (now with the menu and price check hotkeys): on again,
+  // it had been turned off by mistake; can be turned off in Settings > General
   try {
-    if (!localStorage.getItem("atziri-no-attach-msg")) {
-      localStorage.setItem("atziri-no-attach-msg", "1");
-      if (AppConfig().showAttachNotification) {
-        AppConfig().showAttachNotification = false;
+    if (!localStorage.getItem("atziri-attach-msg-v2")) {
+      localStorage.setItem("atziri-attach-msg-v2", "1");
+      if (!AppConfig().showAttachNotification) {
+        AppConfig().showAttachNotification = true;
         saveConfig();
       }
     }

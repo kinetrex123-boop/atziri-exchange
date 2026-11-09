@@ -394,7 +394,7 @@
   },
   "price_check": {
     "name": "Vérification du prix",
-    "hotkey": "Mode masquage automatique",
+    "hotkey": "Vérification du prix",
     "hotkey_locked": "Ouvrir sans masquage automatique",
     "enable_browser": "Activer le navigateur intégré",
     "use_pseudo": "Utiliser les mods pseudo (désactiver en cas de problème d'authentification)",
