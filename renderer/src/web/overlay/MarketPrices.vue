@@ -916,6 +916,17 @@ function findFavLine(fav: Favorite) {
   );
 }
 
+// items whose icon is missing from the item lists ("%NOT_FOUND%")
+const ICON_OVERRIDES: Record<string, string> = {
+  "Expedition Tablet":
+    "https://cdn.poe2db.tw/image/Art/2DItems/Currency/PrecursorTablets/PrecursorTabletExpedition.webp",
+};
+
+function rowIcon(listIcon: string | undefined, line: RowLine) {
+  if (listIcon && listIcon.startsWith("http")) return listIcon;
+  return line.icon ?? ICON_OVERRIDES[line.name];
+}
+
 function buildRow(cat: MarketCategory, line: RowLine) {
   const base = ITEM_BY_REF(cat.ns as "ITEM", line.name)?.[0];
   const name = base?.name ?? line.name;
@@ -935,7 +946,7 @@ function buildRow(cat: MarketCategory, line: RowLine) {
     name: line.variant
       ? `${name} (${ITEM_BY_REF("ITEM", line.variant)?.[0]?.name ?? line.variant})`
       : name,
-    icon: base?.icon ?? line.icon,
+    icon: rowIcon(base?.icon, line),
     value: line.primaryValue,
     ...formatPrice(line.primaryValue),
     volume,
