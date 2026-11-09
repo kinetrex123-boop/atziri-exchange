@@ -526,11 +526,42 @@ async function fetchLive(type: string, force = false, silent = false) {
 
   if (!silent) liveLoading.value = true;
   try {
+    // the category's name, then the names poe.ninja renamed it to
+    for (const apiType of [type, ...(LIVE_TYPE_ALIASES[type] ?? [])]) {
+      const entry = await fetchLiveType(league, apiType);
+      if (entry === "failed") return;
+      if (entry && entry.lines.length) {
+        const next = new Map(live.value);
+        next.set(`${league}|${type}`, entry);
+        live.value = next;
+        return;
+      }
+    }
+    // nothing live: keep showing the regular price list of the category
+  } catch (e) {
+    console.warn("poe.ninja live prices failed", e);
+  } finally {
+    if (!silent) liveLoading.value = false;
+  }
+}
+
+// categories poe.ninja renamed (the list of categories may still use the
+// old name: "Ultimatum" is now "SoulCores")
+const LIVE_TYPE_ALIASES: Record<string, string[]> = {
+  Ultimatum: ["SoulCores"],
+  Ritual: ["Omens"],
+  Delirium: ["Distilled", "DistilledEmotions"],
+};
+
+async function fetchLiveType(
+  league: string,
+  type: string,
+): Promise<LiveCategory | "failed"> {
     const query = `league=${encodeURIComponent(league).replace(/%20/g, "+")}&type=${encodeURIComponent(type)}`;
     const res = await Host.proxy(
       `poe.ninja/poe2/api/economy/exchange/current/overview?${query}`,
     );
-    if (!res.ok) return;
+    if (!res.ok) return "failed";
     const data = (await res.json()) as {
       core?: { rates?: Record<string, number> };
       lines?: Array<{
@@ -561,19 +592,12 @@ async function fetchLive(type: string, force = false, silent = false) {
         },
       ];
     });
-    const next = new Map(live.value);
-    next.set(`${league}|${type}`, {
+    return {
       lines,
       chaosPerDivine: data.core?.rates?.chaos,
       exaltedPerDivine: data.core?.rates?.exalted,
       at: Date.now(),
-    });
-    live.value = next;
-  } catch (e) {
-    console.warn("poe.ninja live prices failed", e);
-  } finally {
-    if (!silent) liveLoading.value = false;
-  }
+    };
 }
 
 // --- New Atziri Exchange version (checked by the main process) ---
@@ -839,7 +863,7 @@ type RowLine = MarketLine & { icon?: string };
 /** Lines of a category: live poe.ninja data when loaded, else the snapshot */
 function linesFor(type: string): readonly RowLine[] {
   const liveLines = live.value.get(`${leagues.selectedId.value}|${type}`)?.lines;
-  if (liveLines) return liveLines;
+  if (liveLines?.length) return liveLines;
   return (categories.value.find((c) => c.type === type)?.lines ??
     []) as readonly RowLine[];
 }

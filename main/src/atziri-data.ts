@@ -29,18 +29,24 @@ const CHECK_EVERY_MS = 3 * 60 * 60 * 1000;
 const UPSTREAM_RELEASES =
   "https://api.github.com/repos/Kvan7/Exiled-Exchange-2/releases/latest";
 
-// Atziri Exchange's own releases (number of the build in this installer;
-// raise it with every new release: tag "v0.16.3-atziri.2", "...atziri.3"...)
-export const ATZIRI_BUILD = 3;
+// Atziri Exchange's own version, raised with every release: "0.1", "0.2"...
+// GitHub release tag: "atziri-v0.1", "atziri-v0.2"...
+export const ATZIRI_VERSION = "0.1";
 const ATZIRI_RELEASES =
   "https://api.github.com/repos/kinetrex123-boop/atziri-exchange/releases/latest";
 
-/** "v0.16.3-atziri.2" -> 2, "v0.16.3-atziri" -> 1 */
+/**
+ * Comparable number of a release tag. New tags "atziri-v0.1" -> 1001,
+ * "atziri-v1.2" -> 2002; the first releases "v0.16.3-atziri.2" -> 2.
+ */
 function atziriBuildOf(tag: string): number | undefined {
+  const v = /atziri-v(\d+)\.(\d+)/i.exec(tag);
+  if (v) return 1000 + parseInt(v[1], 10) * 1000 + parseInt(v[2], 10);
   const m = /atziri(?:[.-]?(\d+))?/i.exec(tag);
   if (!m) return undefined;
   return m[1] ? parseInt(m[1], 10) : 1;
 }
+export const ATZIRI_BUILD = atziriBuildOf(`atziri-v${ATZIRI_VERSION}`)!;
 
 interface AtziriRelease {
   build: number;
@@ -411,6 +417,7 @@ function status() {
   return {
     appVersion: app.getVersion(),
     atziriBuild: ATZIRI_BUILD,
+    atziriVersion: ATZIRI_VERSION,
     atziriUpdate:
       state.atziri && state.atziri.build > ATZIRI_BUILD
         ? { build: state.atziri.build, url: state.atziri.url }

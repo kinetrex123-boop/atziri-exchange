@@ -159,6 +159,10 @@
 
     <!-- Item and mod lists kept up to date from GitHub -->
     <div class="atz-data mb-4">
+      <div v-if="dataStatus?.atziriVersion" class="text-gray-400 mb-2">
+        Atziri {{ dataStatus.atziriVersion }}
+        <span class="text-gray-500">(Exiled Exchange 2 {{ dataStatus.appVersion }})</span>
+      </div>
       <div class="flex-1 mb-1">{{ tr("Listes d'objets et de mods", "Item and mod lists") }}</div>
       <ui-checkbox class="mb-2" :model-value="dataStatus?.enabled ?? true" @update:model-value="setDataEnabled">
         {{ tr("Mettre à jour automatiquement (vérifié toutes les 3 h)", "Update automatically (checked every 3 h)") }}
@@ -405,6 +409,7 @@ const BG_NAMES_EN: Record<string, string> = {
 // --- Item and mod lists updates (main process routes /atziri-data/*) ---
 interface DataStatus {
   appVersion?: string;
+  atziriVersion?: string;
   atziriUpdate?: { build: number; url: string } | null;
   upstream?: { version: string; url: string } | null;
   pendingApply?: boolean;
