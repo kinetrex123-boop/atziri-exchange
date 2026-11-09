@@ -23,7 +23,16 @@ export interface PobBuild {
   mainSkill?: string;
   mainDps: number;
   stats: PobStats;
-  skills: Array<{ label: string; dps: number }>;
+  skills: Array<{
+    label: string;
+    dps: number;
+    gems?: Array<{ name: string; level?: number; quality?: number; support: boolean }>;
+    crit?: number;
+    critMulti?: number;
+    speed?: number;
+    hit?: number;
+    average?: number;
+  }>;
   equipment: Array<{ slot: string; name: string; rarity: string }>;
 }
 

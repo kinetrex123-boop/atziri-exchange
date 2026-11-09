@@ -41,6 +41,10 @@ local STAT_KEYS = {
   "BlockChance", "SpellBlockChance", "TotalEHP", "MovementSpeedMod",
   "Str", "Dex", "Int", "ReqStr", "ReqDex", "ReqInt",
   "CritChance", "Speed", "LifeRegenRecovery", "ManaRegenRecovery",
+  "DeflectionRating", "DeflectChance", "LifeLeechGainRate", "EnergyShieldRegenRecovery",
+  "EffectiveLootRarityMod", "CritMultiplier", "HitChance",
+  "PhysicalMaximumHitTaken", "FireMaximumHitTaken", "ColdMaximumHitTaken",
+  "LightningMaximumHitTaken", "ChaosMaximumHitTaken",
 }
 
 local function pick(out)
@@ -105,8 +109,24 @@ end
 local function stats()
   local out = build.calcsTab.mainOutput
   local skills = eachSkill(function(g)
-    local d = dpsOf(build.calcsTab.mainOutput)
-    if d > 0 then return { label = g.label, dps = d } end
+    local o = build.calcsTab.mainOutput
+    local d = dpsOf(o)
+    if d <= 0 then return nil end
+    -- gems of the group (skill first, then its supports)
+    local gems = {}
+    local group = build.skillsTab.socketGroupList[g.index]
+    for _, gem in ipairs(group.gemList or {}) do
+      if gem.enabled ~= false and gem.nameSpec and gem.nameSpec ~= "" then
+        local support = false
+        pcall(function() support = gem.gemData.grantedEffect.support and true or false end)
+        gems[#gems + 1] = { name = gem.nameSpec, level = gem.level, quality = gem.quality, support = support }
+      end
+    end
+    return {
+      label = g.label, dps = d, gems = gems,
+      crit = o.CritChance, critMulti = o.CritMultiplier, speed = o.Speed, hit = o.HitChance,
+      average = o.AverageHit or o.AverageDamage,
+    }
   end)
   table.sort(skills, function(a, b) return a.dps > b.dps end)
   local main = build.skillsTab.socketGroupList[build.mainSocketGroup]

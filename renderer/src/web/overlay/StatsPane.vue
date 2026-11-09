@@ -68,55 +68,104 @@
       <div v-if="error && ready" class="st-err">{{ error }}</div>
 
       <template v-if="build">
-        <div class="st-kpis">
-          <div class="st-kpi st-main">
-            <span class="st-cap">DPS · {{ build.mainSkill ?? "—" }}</span>
-            <b>{{ fmtNum(build.mainDps, isFr) }}</b>
+        <!-- layout A: stats column on the left (poe.ninja order), skills on the right -->
+        <div class="st-grid">
+          <div class="st-left">
+            <div class="st-box">
+              <h3>{{ tr("Attributs", "Attributes") }}</h3>
+              <div class="st-attrs">
+                <div class="a-str">{{ fmtNum(s.Str, isFr) }} {{ tr("For", "Str") }}</div>
+                <div class="a-dex">{{ fmtNum(s.Dex, isFr) }} Dex</div>
+                <div class="a-int">{{ fmtNum(s.Int, isFr) }} Int</div>
+              </div>
+              <div class="st-kv st-mt"><span>{{ tr("Vitesse de déplacement", "Movement speed") }}</span><span>{{ pctMod(s.MovementSpeedMod) }}</span></div>
+              <div class="st-kv"><span>{{ tr("Rareté des objets", "Item rarity") }}</span><span>{{ pctMod(s.EffectiveLootRarityMod) }}</span></div>
+            </div>
+            <div class="st-box">
+              <h3>{{ tr("Défense", "Defensive") }}</h3>
+              <div class="st-kv"><span>{{ tr("Vie", "Life") }}</span><span>{{ fmtNum(s.Life, isFr) }}</span></div>
+              <div class="st-kv"><span>{{ tr("Bouclier d'énergie", "Energy shield") }}</span><span>{{ fmtNum(s.EnergyShield, isFr) }}</span></div>
+              <div class="st-kv"><span>Mana</span><span>{{ fmtNum(s.Mana, isFr) }}</span></div>
+              <div class="st-kv"><span>{{ tr("Esprit", "Spirit") }}</span><span>{{ fmtNum(s.Spirit, isFr) }}</span></div>
+              <div class="st-kv"><span>{{ tr("Armure", "Armour") }}</span><span>{{ fmtNum(s.Armour, isFr) }}</span></div>
+              <div class="st-kv"><span>{{ tr("Évasion", "Evasion rating") }}</span><span>{{ fmtNum(s.Evasion, isFr) }}</span></div>
+              <div class="st-kv"><span>{{ tr("Déviation", "Deflection rating") }}</span><span>{{ fmtNum(s.DeflectionRating, isFr) }}</span></div>
+            </div>
+            <div class="st-box">
+              <h3>{{ tr("Résistances", "Resistances") }}</h3>
+              <div class="st-res">
+                <div class="r-fire">{{ fmtNum(s.FireResist, isFr) }} %</div>
+                <div class="r-cold">{{ fmtNum(s.ColdResist, isFr) }} %</div>
+                <div class="r-light">{{ fmtNum(s.LightningResist, isFr) }} %</div>
+                <div class="r-chaos">{{ fmtNum(s.ChaosResist, isFr) }} %</div>
+              </div>
+            </div>
+            <div class="st-box">
+              <h3>{{ tr("Réserve de PV effectifs", "Effective Health Pool") }}</h3>
+              <div class="st-kv"><span>{{ tr("PV effectifs", "Effective HP") }}</span><span>{{ short(s.TotalEHP) }}</span></div>
+              <div class="st-cap st-mt">{{ tr("Coup max encaissé", "Max hit") }}</div>
+              <div class="st-maxhit">
+                <div class="r-phys" :title="tr('Physique', 'Physical')">{{ short(s.PhysicalMaximumHitTaken) }}</div>
+                <div class="r-fire" :title="tr('Feu', 'Fire')">{{ short(s.FireMaximumHitTaken) }}</div>
+                <div class="r-cold" :title="tr('Froid', 'Cold')">{{ short(s.ColdMaximumHitTaken) }}</div>
+                <div class="r-light" :title="tr('Foudre', 'Lightning')">{{ short(s.LightningMaximumHitTaken) }}</div>
+                <div class="r-chaos" title="Chaos">{{ short(s.ChaosMaximumHitTaken) }}</div>
+              </div>
+            </div>
+            <div class="st-box">
+              <h3>{{ tr("Récupération", "Recovery") }}</h3>
+              <div class="st-kv"><span>{{ tr("Régén. de vie", "Life regen") }}</span><span>{{ fmtNum(s.LifeRegenRecovery, isFr) }} /s</span></div>
+              <div v-if="s.LifeLeechGainRate" class="st-kv"><span>{{ tr("Vol de vie", "Life leech") }}</span><span>{{ fmtNum(s.LifeLeechGainRate, isFr) }} /s</span></div>
+              <div v-if="s.EnergyShieldRegenRecovery" class="st-kv"><span>{{ tr("Régén. de bouclier", "ES regen") }}</span><span>{{ fmtNum(s.EnergyShieldRegenRecovery, isFr) }} /s</span></div>
+              <div class="st-kv"><span>{{ tr("Régén. de mana", "Mana regen") }}</span><span>{{ fmtNum(s.ManaRegenRecovery, isFr) }} /s</span></div>
+            </div>
           </div>
-          <div class="st-kpi"><span class="st-cap">{{ tr("Vie", "Life") }}</span><b>{{ fmtNum(s.Life, isFr) }}</b></div>
-          <div class="st-kpi"><span class="st-cap">{{ tr("Bouclier d'énergie", "Energy shield") }}</span><b>{{ fmtNum(s.EnergyShield, isFr) }}</b></div>
-          <div class="st-kpi"><span class="st-cap">{{ tr("PV effectifs", "Effective HP") }}</span><b>{{ fmtNum(s.TotalEHP, isFr) }}</b></div>
-        </div>
 
-        <div class="st-cols">
-          <div class="st-box">
-            <h3>{{ tr("Défenses", "Defences") }}</h3>
-            <div class="st-kv"><span>{{ tr("Armure", "Armour") }}</span><span>{{ fmtNum(s.Armour, isFr) }}</span></div>
-            <div class="st-kv"><span>{{ tr("Évasion", "Evasion") }}</span><span>{{ fmtNum(s.Evasion, isFr) }}</span></div>
-            <div class="st-kv"><span>{{ tr("Blocage", "Block") }}</span><span>{{ fmtNum(s.BlockChance, isFr) }} %</span></div>
-            <div class="st-kv"><span>{{ tr("Mana / Esprit", "Mana / Spirit") }}</span><span>{{ fmtNum(s.Mana, isFr) }} / {{ fmtNum(s.Spirit, isFr) }}</span></div>
-            <div class="st-kv"><span>{{ tr("Vitesse de déplacement", "Movement speed") }}</span><span>{{ s.MovementSpeedMod ? fmtNum((s.MovementSpeedMod - 1) * 100, isFr) + " %" : "—" }}</span></div>
-            <div class="st-cap st-mt">{{ tr("Résistances", "Resistances") }}</div>
-            <div class="st-res">
-              <div class="r-fire">{{ fmtNum(s.FireResist, isFr) }} %</div>
-              <div class="r-cold">{{ fmtNum(s.ColdResist, isFr) }} %</div>
-              <div class="r-light">{{ fmtNum(s.LightningResist, isFr) }} %</div>
-              <div class="r-chaos">{{ fmtNum(s.ChaosResist, isFr) }} %</div>
+          <div class="st-right">
+            <div class="st-cap">{{ tr("Compétences principales", "Main skills") }}</div>
+            <div v-for="(sk, i) in build.skills" :key="sk.label + i" class="st-skill">
+              <button type="button" class="st-sk-head" @click="toggleSkill(sk.label)">
+                <span class="st-chev">{{ openSkills.has(sk.label) ? "▾" : "▸" }}</span>
+                <span class="st-gemdot g-skill"></span>
+                <span class="st-sk-name" :class="{ 'st-acc': sk.label === build.mainSkill }">{{ sk.label }}</span>
+                <span class="st-sk-dps">{{ fmtNum(sk.dps, isFr) }} DPS</span>
+              </button>
+              <div v-if="openSkills.has(sk.label)" class="st-sk-body">
+                <div>
+                  <div v-for="g in sk.gems ?? []" :key="g.name" class="st-gem">
+                    <span class="st-gemdot" :class="g.support ? 'g-support' : 'g-skill'"></span>
+                    {{ g.name }}
+                    <span v-if="!g.support && g.level" class="st-muted">{{ tr("niv.", "lvl") }} {{ g.level }}<template v-if="g.quality"> · {{ g.quality }} %</template></span>
+                  </div>
+                </div>
+                <div>
+                  <div class="st-kv"><span>DPS</span><span class="st-acc">{{ fmtNum(sk.dps, isFr) }}</span></div>
+                  <div v-if="sk.average" class="st-kv"><span>{{ tr("Coup moyen", "Average hit") }}</span><span>{{ fmtNum(sk.average, isFr) }}</span></div>
+                  <div v-if="sk.crit != null" class="st-kv"><span>{{ tr("Critique", "Crit chance") }}</span><span>{{ fmtNum(sk.crit, isFr) }} %</span></div>
+                  <div v-if="sk.critMulti" class="st-kv"><span>{{ tr("Multiplicateur crit.", "Crit multiplier") }}</span><span>×{{ fmtNum(sk.critMulti, isFr) }}</span></div>
+                  <div v-if="sk.speed" class="st-kv"><span>{{ tr("Vitesse", "Speed") }}</span><span>{{ fmtNum(sk.speed, isFr) }} /s</span></div>
+                  <div v-if="sk.hit != null" class="st-kv"><span>{{ tr("Précision", "Hit chance") }}</span><span>{{ fmtNum(sk.hit, isFr) }} %</span></div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="st-box">
-            <h3>{{ tr("Compétences", "Skills") }}</h3>
-            <div v-for="(sk, i) in build.skills" :key="sk.label + i" class="st-kv">
-              <span :class="{ 'st-acc': sk.label === build.mainSkill }">{{ sk.label }}</span>
-              <span>{{ fmtNum(sk.dps, isFr) }}</span>
+
+            <div class="st-box st-mt">
+              <h3>{{ tr("Équipement", "Gear") }}</h3>
+              <div class="st-gear">
+                <div v-for="e in build.equipment" :key="e.slot" class="st-kv">
+                  <span class="st-muted">{{ slotLabel(e.slot, isFr) }}</span>
+                  <span class="st-item" :class="`rar-${e.rarity.toLowerCase()}`">{{ e.name.split(",")[0] }}</span>
+                </div>
+              </div>
             </div>
-            <div class="st-cap st-mt">{{ tr("Attributs", "Attributes") }}</div>
-            <div class="st-kv"><span>{{ tr("For / Dex / Int", "Str / Dex / Int") }}</span><span>{{ fmtNum(s.Str, isFr) }} / {{ fmtNum(s.Dex, isFr) }} / {{ fmtNum(s.Int, isFr) }}</span></div>
-          </div>
-          <div class="st-box">
-            <h3>{{ tr("Équipement", "Gear") }}</h3>
-            <div v-for="e in build.equipment" :key="e.slot" class="st-kv">
-              <span class="st-muted">{{ slotLabel(e.slot, isFr) }}</span>
-              <span class="st-item" :class="`rar-${e.rarity.toLowerCase()}`">{{ e.name.split(",")[0] }}</span>
-            </div>
+            <p class="st-muted st-mt">
+              {{ tr(
+                "Chiffres calculés par Path of Building pour le build suivi. Ctrl + B sur un objet en jeu le compare à ton équipement.",
+                "Numbers computed by Path of Building for the followed build. Ctrl + B on an item in game compares it with your gear.",
+              ) }}
+            </p>
           </div>
         </div>
-        <p class="st-muted st-mt">
-          {{ tr(
-            "Chiffres calculés par Path of Building pour le build suivi. Ctrl + B sur un objet en jeu le compare à ton équipement.",
-            "Numbers computed by Path of Building for the followed build. Ctrl + B on an item in game compares it with your gear.",
-          ) }}
-        </p>
       </template>
     </div>
   </div>
@@ -143,7 +192,34 @@ const status = shallowRef<PobStatus | null>(null);
 const build = shallowRef<PobBuild | null>(null);
 const loading = shallowRef(false);
 const error = shallowRef("");
-const s = computed(() => build.value?.stats ?? {});
+const s = computed<Record<string, number | undefined>>(() => build.value?.stats ?? {});
+
+// "1.785" (multiplier) -> "+78,5 %"
+function pctMod(m: number | undefined) {
+  if (m == null) return "—";
+  const v = (m - 1) * 100;
+  return (v >= 0 ? "+" : "") + fmtNum(v, isFr.value) + " %";
+}
+// 20146 -> "20,1k"
+function short(n: number | undefined) {
+  if (n == null) return "—";
+  if (Math.abs(n) >= 1000) {
+    return (n / 1000).toLocaleString(isFr.value ? "fr-FR" : "en-GB", { maximumFractionDigits: 1 }) + "k";
+  }
+  return fmtNum(n, isFr.value);
+}
+
+// skills unfolded (the main one at first)
+const openSkills = shallowRef(new Set<string>());
+watch(build, (b) => {
+  if (b?.mainSkill && openSkills.value.size === 0) openSkills.value = new Set([b.mainSkill]);
+});
+function toggleSkill(label: string) {
+  const next = new Set(openSkills.value);
+  if (next.has(label)) next.delete(label);
+  else next.add(label);
+  openSkills.value = next;
+}
 const ready = computed(
   () => Boolean(status.value?.pobFound && status.value.current && status.value.engineFound),
 );
@@ -319,6 +395,112 @@ watch(hubTab, (t) => {
 }
 .st-main b {
   color: var(--accent);
+}
+.st-grid {
+  display: grid;
+  grid-template-columns: 20rem 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.st-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.st-right {
+  min-width: 0;
+}
+.st-attrs,
+.st-maxhit {
+  display: grid;
+  gap: 5px;
+  text-align: center;
+  font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+}
+.st-attrs {
+  grid-template-columns: repeat(3, 1fr);
+}
+.st-maxhit {
+  grid-template-columns: repeat(5, 1fr);
+}
+.st-attrs div,
+.st-maxhit div {
+  border-radius: 5px;
+  padding: 3px;
+}
+.a-str {
+  background: #4a1c14;
+}
+.a-dex {
+  background: #173f1f;
+}
+.a-int {
+  background: #16305a;
+}
+.r-phys {
+  background: #3a3a3a;
+}
+.st-skill {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  margin-top: 6px;
+}
+.st-sk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  color: var(--fg);
+}
+.st-sk-head:hover .st-sk-name {
+  color: var(--accent);
+}
+.st-chev {
+  color: var(--muted);
+  width: 0.8rem;
+}
+.st-sk-name {
+  flex: 1;
+  font-weight: 600;
+}
+.st-sk-dps {
+  font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color: var(--accent);
+}
+.st-sk-body {
+  border-top: 1px solid var(--line);
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  font-size: 0.85rem;
+}
+.st-gem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+.st-gemdot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.g-skill {
+  background: #56c9a6;
+}
+.g-support {
+  background: #8fa2ff;
+}
+.st-gear {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
 }
 .st-cols {
   display: grid;
