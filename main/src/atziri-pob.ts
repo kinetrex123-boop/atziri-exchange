@@ -12,6 +12,7 @@ import { app, shell } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import type { Server, IncomingMessage, ServerResponse } from "http";
 import type { Logger } from "./RemoteLogger";
 
@@ -27,8 +28,15 @@ function bridgeDir() {
     : path.join(__dirname, "..", "pob");
 }
 
+interface NinjaChar {
+  account: string; // "kinetrex-7298"
+  league: string; // "forbiddenrites"
+  character: string;
+}
 interface Settings {
-  file: string | "latest";
+  // a saved PoB build, "latest" saved one, or "ninja" (character on poe.ninja)
+  file: string | "latest" | "ninja";
+  ninja?: NinjaChar;
 }
 function loadSettings(): Settings {
   try {
@@ -36,6 +44,95 @@ function loadSettings(): Settings {
   } catch {
     return { file: "latest" };
   }
+}
+
+// ---- character followed on poe.ninja (its "Path of Building" export) ----
+const NINJA_EVERY_MS = 5 * 60 * 1000;
+const NINJA_FILE = () => path.join(app.getPath("userData"), "atziri-pob-ninja.xml");
+const UA = { "User-Agent": "Atziri-Exchange (PoE2 overlay)" };
+let ninjaState: { version?: number; checkedAt: number; updatedUtc?: string; error?: string } = {
+  checkedAt: 0,
+};
+let ninjaRunning: Promise<void> | null = null;
+
+/** "https://poe.ninja/poe2/profile/kinetrex-7298/forbiddenrites/character/NAME" */
+export function parseNinjaUrl(url: string): NinjaChar | null {
+  const m = /poe\.ninja\/poe2\/(?:profile|builds)\/([^/?#]+)\/([^/?#]+)\/character\/([^/?#]+)/i.exec(url);
+  if (m && /profile/i.test(url)) {
+    return { account: decodeURIComponent(m[1]), league: decodeURIComponent(m[2]), character: decodeURIComponent(m[3]) };
+  }
+  return null;
+}
+
+/** latest version number poe.ninja announces for the character */
+async function ninjaVersion(c: NinjaChar): Promise<number> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => { ctrl.abort(); }, 15000);
+  try {
+    const res = await fetch(
+      `https://poe.ninja/poe2/api/events/character/${encodeURIComponent(c.account)}/${encodeURIComponent(c.league)}/${encodeURIComponent(c.character)}`,
+      { headers: UA, signal: ctrl.signal },
+    );
+    if (!res.ok || !res.body) throw new Error(`poe.ninja ${res.status}`);
+    const reader = res.body.getReader();
+    let text = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      text += Buffer.from(value).toString("utf8");
+      const m = /data:\s*(\{[^\n]*\})/.exec(text);
+      if (m) {
+        ctrl.abort();
+        const v = (JSON.parse(m[1]) as { version?: number }).version;
+        if (typeof v === "number") return v;
+      }
+      if (text.length > 4000) break;
+    }
+    throw new Error("poe.ninja: no version");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function refreshNinja(logger: Logger, force = false) {
+  const s = loadSettings();
+  if (s.file !== "ninja" || !s.ninja) return;
+  if (!force && Date.now() - ninjaState.checkedAt < NINJA_EVERY_MS && fs.existsSync(NINJA_FILE())) return;
+  if (ninjaRunning) { await ninjaRunning; return; }
+  const c = s.ninja;
+  ninjaRunning = (async () => {
+    try {
+      const version = await ninjaVersion(c);
+      if (version !== ninjaState.version || !fs.existsSync(NINJA_FILE())) {
+        const res = await fetch(
+          `https://poe.ninja/poe2/api/profile/characters/${encodeURIComponent(c.account)}/${encodeURIComponent(c.league)}/${encodeURIComponent(c.character)}/model/${version}`,
+          { headers: UA },
+        );
+        if (!res.ok) throw new Error(`poe.ninja ${res.status}`);
+        const body = (await res.json()) as {
+          charModel?: { pathOfBuildingExport?: string; updatedUtc?: string };
+        };
+        const code = body.charModel?.pathOfBuildingExport;
+        if (!code) throw new Error("poe.ninja: no Path of Building export");
+        const xml = zlib
+          .inflateSync(Buffer.from(code.replace(/-/g, "+").replace(/_/g, "/"), "base64"))
+          .toString("utf8");
+        if (!xml.includes("<PathOfBuilding")) throw new Error("poe.ninja: bad export");
+        fs.writeFileSync(NINJA_FILE(), xml);
+        ninjaState.version = version;
+        ninjaState.updatedUtc = body.charModel?.updatedUtc;
+      }
+      ninjaState.checkedAt = Date.now();
+      ninjaState.error = undefined;
+    } catch (e) {
+      ninjaState.checkedAt = Date.now();
+      ninjaState.error = (e as Error).message;
+      logger.write(`warn [Atziri PoB] ${ninjaState.error}`);
+    } finally {
+      ninjaRunning = null;
+    }
+  })();
+  await ninjaRunning;
 }
 function saveSettings(s: Settings) {
   try {
@@ -173,12 +270,14 @@ async function send<T>(logger: Logger, cmd: Record<string, unknown>): Promise<T>
 
 function currentFile(): string | null {
   const s = loadSettings();
+  if (s.file === "ninja") return fs.existsSync(NINJA_FILE()) ? NINJA_FILE() : null;
   if (s.file !== "latest" && fs.existsSync(s.file)) return s.file;
   return listBuilds()[0]?.file ?? null;
 }
 
 /** loads (or reloads, if saved again in PoB) the chosen build */
 async function ensureBuild(logger: Logger) {
+  await refreshNinja(logger);
   const file = currentFile();
   if (!file) throw new Error("no build");
   const mtime = fs.statSync(file).mtimeMs;
@@ -199,6 +298,10 @@ function status() {
     selected: s.file,
     current: currentFile(),
     lastError,
+    ninja: s.ninja ?? null,
+    ninjaUpdatedUtc: ninjaState.updatedUtc ?? null,
+    ninjaCheckedAt: ninjaState.checkedAt || null,
+    ninjaError: ninjaState.error ?? null,
   };
 }
 
@@ -233,9 +336,30 @@ export function setupAtziriPob(server: Server, logger: Logger) {
     if (url.startsWith("/atziri-pob/status")) {
       sendJson(res, 200, status());
     } else if (url.startsWith("/atziri-pob/select") && req.method === "POST") {
-      const file = new URL(url, "http://x").searchParams.get("file") ?? "latest";
+      const params = new URL(url, "http://x").searchParams;
+      const file = params.get("file") ?? "latest";
+      const prev = loadSettings();
+      if (file === "ninja") {
+        // poe.ninja profile link of the character
+        const c = parseNinjaUrl(params.get("url") ?? "") ?? prev.ninja ?? null;
+        if (!c) {
+          sendJson(res, 400, { ...status(), error: "bad poe.ninja link" });
+          return;
+        }
+        saveSettings({ file, ninja: c });
+        ninjaState = { checkedAt: 0 };
+        try {
+          fs.rmSync(NINJA_FILE(), { force: true });
+        } catch {
+          // ignore
+        }
+        refreshNinja(logger, true)
+          .then(() => { sendJson(res, 200, status()); })
+          .catch(fail);
+        return;
+      }
       const ok = file === "latest" || listBuilds().some((b) => b.file === file);
-      if (ok) saveSettings({ file });
+      if (ok) saveSettings({ file, ninja: prev.ninja });
       sendJson(res, ok ? 200 : 400, status());
     } else if (url.startsWith("/atziri-pob/open") && req.method === "POST") {
       const exe = path.join(POB_DIR(), "Path of Building-PoE2.exe");
@@ -262,4 +386,8 @@ export function setupAtziriPob(server: Server, logger: Logger) {
     }
   });
   app.on("will-quit", stop);
+  // keep the poe.ninja character fresh (only when that source is chosen)
+  setInterval(() => {
+    refreshNinja(logger).catch(() => undefined);
+  }, NINJA_EVERY_MS);
 }

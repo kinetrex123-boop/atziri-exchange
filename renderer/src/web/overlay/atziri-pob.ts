@@ -7,6 +7,10 @@ export interface PobStatus {
   selected: string;
   current: string | null;
   lastError: string | null;
+  ninja: { account: string; league: string; character: string } | null;
+  ninjaUpdatedUtc: string | null;
+  ninjaCheckedAt: number | null;
+  ninjaError: string | null;
 }
 
 export type PobStats = Record<string, number>;
@@ -84,4 +88,13 @@ export function fmtNum(n: number | undefined, fr: boolean) {
   const v = abs >= 100 ? Math.round(n) : Math.round(n * 10) / 10;
   if (abs >= 1e6) return (n / 1e6).toLocaleString(fr ? "fr-FR" : "en-GB", { maximumFractionDigits: 2 }) + " M";
   return v.toLocaleString(fr ? "fr-FR" : "en-GB");
+}
+
+/** follows a character on poe.ninja (profile link pasted by the player) */
+export async function pobSelectNinja(url: string) {
+  return await json<PobStatus>(
+    await fetch(`/atziri-pob/select?file=ninja&url=${encodeURIComponent(url)}`, {
+      method: "POST",
+    }),
+  );
 }

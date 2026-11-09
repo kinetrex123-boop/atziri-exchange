@@ -13,10 +13,10 @@
             <span v-else><b>Path of Building (PoE2)</b> installed on this PC.
               <a href="https://pathofbuilding.community/" target="_blank" rel="noreferrer">Download it</a></span>
           </li>
-          <li :class="{ done: (status?.builds.length ?? 0) > 0 }">
-            <i :class="(status?.builds.length ?? 0) > 0 ? 'fas fa-check-circle' : 'far fa-circle'"></i>
-            <span v-if="isFr">Au moins un <b>build sauvegardé</b> dans PoB (« Importer » ton personnage puis « Sauvegarder »).</span>
-            <span v-else>At least one <b>saved build</b> in PoB ("Import" your character, then "Save").</span>
+          <li :class="{ done: Boolean(status?.current) }">
+            <i :class="status?.current ? 'fas fa-check-circle' : 'far fa-circle'"></i>
+            <span v-if="isFr">Un build à suivre : <b>ton personnage sur poe.ninja</b> (conseillé, mis à jour tout seul, profil PoE public) ou un <b>build sauvegardé</b> dans PoB.</span>
+            <span v-else>A build to follow: <b>your character on poe.ninja</b> (recommended, updates by itself, public PoE profile) or a <b>saved build</b> in PoB.</span>
           </li>
           <li :class="{ done: Boolean(status?.current) }">
             <i :class="status?.current ? 'fas fa-check-circle' : 'far fa-circle'"></i>
@@ -25,8 +25,8 @@
         </ol>
         <p class="st-muted">
           {{ tr(
-            "Pour que l'overlay suive ton équipement en jeu : dans PoB, onglet Importer, « Importer les objets et compétences » puis Sauvegarder. L'overlay relit le build à chaque sauvegarde.",
-            "To follow your in-game gear: in PoB, Import tab, \"Import items and skills\", then Save. The overlay reloads the build each time it is saved.",
+            "poe.ninja : ouvre ton personnage sur poe.ninja/poe2 (Profil), copie le lien de la page et colle-le ci-dessous. L'overlay le relit toutes les 5 minutes. Build PoB : dans PoB, Importer puis Sauvegarder ; l'overlay le relit à chaque sauvegarde.",
+            "poe.ninja: open your character on poe.ninja/poe2 (Profile), copy the page link and paste it below. The overlay reads it again every 5 minutes. PoB build: in PoB, Import then Save; the overlay reloads it on each save.",
           ) }}
         </p>
         <div v-if="status?.lastError" class="st-err">{{ tr("Erreur :", "Error:") }} {{ status.lastError }}</div>
@@ -35,8 +35,11 @@
       <!-- build choice -->
       <div class="st-head">
         <select class="ar-search st-select" :value="status?.selected ?? 'latest'" @change="choose(($event.target as HTMLSelectElement).value)">
-          <option value="latest">{{ tr("Le dernier build sauvegardé", "Latest saved build") }}</option>
-          <option v-for="b in status?.builds ?? []" :key="b.file" :value="b.file">{{ b.name }}</option>
+          <option value="ninja">
+            {{ status?.ninja ? `poe.ninja · ${status.ninja.character}` : tr("Mon personnage sur poe.ninja (auto)", "My character on poe.ninja (auto)") }}
+          </option>
+          <option value="latest">{{ tr("Le dernier build PoB sauvegardé", "Latest saved PoB build") }}</option>
+          <option v-for="b in status?.builds ?? []" :key="b.file" :value="b.file">PoB · {{ b.name }}</option>
         </select>
         <span v-if="build" class="st-muted">
           {{ build.className }}<template v-if="build.ascendancy"> · {{ build.ascendancy }}</template>
@@ -46,6 +49,21 @@
         <span class="st-sp"></span>
         <button type="button" class="st-btn" @click="refresh()"><i class="fas fa-redo"></i> {{ tr("Actualiser", "Refresh") }}</button>
         <button v-if="status?.pobFound" type="button" class="st-btn" @click="pobOpen()">{{ tr("Ouvrir PoB", "Open PoB") }}</button>
+      </div>
+      <!-- poe.ninja character -->
+      <div v-if="ninjaMode" class="st-ninja">
+        <input
+          v-model.trim="ninjaUrl"
+          class="ar-search st-url"
+          :placeholder="tr('Lien de ton personnage : https://poe.ninja/poe2/profile/…/character/…', 'Your character link: https://poe.ninja/poe2/profile/…/character/…')"
+          @keydown.enter="useNinja"
+        />
+        <button type="button" class="st-btn" @click="useNinja">{{ tr("Suivre", "Follow") }}</button>
+        <span v-if="status?.ninja && status.ninjaUpdatedUtc" class="st-muted">
+          {{ tr("Mis à jour par poe.ninja :", "Updated by poe.ninja:") }} {{ when(status.ninjaUpdatedUtc) }}
+          · {{ tr("vérifié toutes les 5 min", "checked every 5 min") }}
+        </span>
+        <span v-if="status?.ninjaError" class="st-err">{{ status.ninjaError }}</span>
       </div>
       <div v-if="error && ready" class="st-err">{{ error }}</div>
 
@@ -95,8 +113,8 @@
         </div>
         <p class="st-muted st-mt">
           {{ tr(
-            "Chiffres calculés par Path of Building à partir de ton build sauvegardé. Ctrl + B sur un objet en jeu le compare à ton équipement.",
-            "Numbers computed by Path of Building from your saved build. Ctrl + B on an item in game compares it with your gear.",
+            "Chiffres calculés par Path of Building pour le build suivi. Ctrl + B sur un objet en jeu le compare à ton équipement.",
+            "Numbers computed by Path of Building for the followed build. Ctrl + B on an item in game compares it with your gear.",
           ) }}
         </p>
       </template>
@@ -113,6 +131,7 @@ import {
   pobSelect,
   pobStats,
   pobOpen,
+  pobSelectNinja,
   slotLabel,
   fmtNum,
   type PobStatus,
@@ -148,12 +167,51 @@ async function refresh() {
 }
 
 async function choose(file: string) {
+  if (file === "ninja" && !status.value?.ninja) {
+    pickingNinja.value = true; // link to paste first
+    return;
+  }
+  pickingNinja.value = false;
   try {
-    status.value = await pobSelect(file);
+    status.value = file === "ninja" ? await pobSelectNinja("") : await pobSelect(file);
   } catch {
     // ignore
   }
   await refresh();
+}
+
+// --- character followed on poe.ninja ---
+const pickingNinja = shallowRef(false);
+const ninjaUrl = shallowRef("");
+const ninjaMode = computed(() => pickingNinja.value || status.value?.selected === "ninja");
+async function useNinja() {
+  if (!ninjaUrl.value) return;
+  loading.value = true;
+  error.value = "";
+  try {
+    status.value = await pobSelectNinja(ninjaUrl.value);
+    pickingNinja.value = false;
+  } catch (e) {
+    error.value = /bad poe.ninja link/.test((e as Error).message)
+      ? tr("Lien non reconnu : colle le lien de la page « Profil » de ton personnage sur poe.ninja.", "Link not recognised: paste the link of your character's \"Profile\" page on poe.ninja.")
+      : (e as Error).message;
+    loading.value = false;
+    return;
+  }
+  loading.value = false;
+  await refresh();
+}
+function when(iso: string) {
+  try {
+    return new Date(iso).toLocaleString(isFr.value ? "fr-FR" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 
 onMounted(() => {
@@ -188,6 +246,16 @@ watch(hubTab, (t) => {
 }
 .st-sp {
   flex: 1;
+}
+.st-ninja {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.st-url {
+  flex: 1;
+  min-width: 20rem;
 }
 .st-select {
   width: auto !important;
