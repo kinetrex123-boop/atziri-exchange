@@ -3,7 +3,8 @@
 import { shallowRef } from "vue";
 import { Host } from "@/web/background/IPC";
 import { parseClipboard } from "@/parser";
-import { toPobItem } from "./atziri-pob-item";
+import { toPobItem, toGameLines } from "./atziri-pob-item";
+import { AppConfig } from "@/web/Config";
 import { pobCompare, type PobCompare } from "./atziri-pob";
 
 export interface CompareState {
@@ -59,6 +60,12 @@ async function run(clipboard: string) {
   try {
     const pobItem = await toPobItem(parsed.value, clipboard);
     const data = await pobCompare(pobItem.text);
+    // mod lines back in the game language (PoB works in English)
+    const lang = AppConfig().language;
+    data.lines = await toGameLines(data.lines ?? [], lang);
+    for (const s of data.slots) {
+      s.currentLines = await toGameLines(s.currentLines ?? [], lang);
+    }
     if (pobCompareState.value?.itemName !== itemName) return; // another one since
     pobCompareState.value = { status: "done", itemName, data, unknown: pobItem.unknown };
   } catch (e) {

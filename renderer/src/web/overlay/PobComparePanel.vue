@@ -47,6 +47,17 @@
         <span class="pc-num" :class="cls(r.after - r.before)">{{ pct(r.before, r.after) }}</span>
       </div>
 
+      <template v-if="offence.rows.length">
+        <div class="pc-grp">{{ tr("Attaque", "Offence") }} · {{ offence.label }}</div>
+        <div v-for="o in offence.rows" :key="o.key" class="pc-row">
+          <span>{{ tr(o.fr, o.en) }}</span>
+          <span class="pc-num">{{ fmtNum(o.before, isFr) }}{{ o.unit }}</span>
+          <span class="pc-muted">→</span>
+          <span class="pc-num">{{ fmtNum(o.after, isFr) }}{{ o.unit }}</span>
+          <span class="pc-num" :class="cls(o.after - o.before)">{{ signed(o.after - o.before) }}</span>
+        </div>
+      </template>
+
       <div class="pc-grp">{{ tr("Défense", "Defence") }}</div>
       <template v-for="d in DEF" :key="d.key">
         <div v-if="shown(d.key)" class="pc-row">
@@ -55,6 +66,21 @@
           <span class="pc-muted">→</span>
           <span class="pc-num">{{ fmtNum(slot!.after[d.key], isFr) }}{{ d.unit }}</span>
           <span class="pc-num" :class="cls(diff(d.key))">{{ signed(diff(d.key)) }}</span>
+        </div>
+      </template>
+
+      <!-- mod lines, this item vs the equipped one -->
+      <template v-if="(state.data.lines?.length ?? 0) || (slot?.currentLines?.length ?? 0)">
+        <div class="pc-grp">{{ tr("Mods", "Mods") }}</div>
+        <div class="pc-mods">
+          <div>
+            <div class="pc-cap">{{ tr("Cet objet", "This item") }}</div>
+            <div v-for="(l, i) in state.data.lines ?? []" :key="'n' + i" :class="currentSet.has(l) ? 'pc-muted' : 'pc-ok'">{{ l }}</div>
+          </div>
+          <div>
+            <div class="pc-cap">{{ tr("Équipé", "Equipped") }}</div>
+            <div v-for="(l, i) in slot?.currentLines ?? []" :key="'c' + i" :class="newSet.has(l) ? 'pc-muted' : 'pc-bad'">{{ l }}</div>
+          </div>
         </div>
       </template>
 
@@ -83,6 +109,9 @@ watch(state, () => {
   slotIndex.value = 0;
 });
 const slot = computed(() => state.value?.data?.slots[slotIndex.value]);
+// same line on both items: shown grey; only on one: green / red
+const newSet = computed(() => new Set(state.value?.data?.lines ?? []));
+const currentSet = computed(() => new Set(slot.value?.currentLines ?? []));
 
 const DEF = [
   { key: "Life", fr: "Vie", en: "Life", unit: "" },
@@ -98,7 +127,43 @@ const DEF = [
   { key: "Mana", fr: "Mana", en: "Mana", unit: "" },
   { key: "Spirit", fr: "Esprit", en: "Spirit", unit: "" },
   { key: "MovementSpeedMod", fr: "Vitesse de déplacement", en: "Movement speed", unit: "" },
+  { key: "DeflectionRating", fr: "Déviation", en: "Deflection rating", unit: "" },
+  { key: "SpellBlockChance", fr: "Blocage des sorts", en: "Spell block", unit: " %" },
+  { key: "PhysicalMaximumHitTaken", fr: "Coup max physique", en: "Max physical hit", unit: "" },
+  { key: "ChaosMaximumHitTaken", fr: "Coup max chaos", en: "Max chaos hit", unit: "" },
+  { key: "LifeRegenRecovery", fr: "Régén. de vie /s", en: "Life regen /s", unit: "" },
+  { key: "LifeLeechGainRate", fr: "Vol de vie /s", en: "Life leech /s", unit: "" },
+  { key: "ManaRegenRecovery", fr: "Régén. de mana /s", en: "Mana regen /s", unit: "" },
+  { key: "Str", fr: "Force", en: "Strength", unit: "" },
+  { key: "Dex", fr: "Dextérité", en: "Dexterity", unit: "" },
+  { key: "Int", fr: "Intelligence", en: "Intelligence", unit: "" },
 ];
+
+// attack / spell numbers of the first skill listed
+const OFF = [
+  { key: "AverageHit", fr: "Coup moyen", en: "Average hit", unit: "" },
+  { key: "AverageDamage", fr: "Dégâts moyens", en: "Average damage", unit: "" },
+  { key: "CritChance", fr: "Chances de critique", en: "Crit chance", unit: " %" },
+  { key: "CritMultiplier", fr: "Multiplicateur crit.", en: "Crit multiplier", unit: "" },
+  { key: "Speed", fr: "Vitesse (attaques/s)", en: "Speed (per second)", unit: "" },
+  { key: "HitChance", fr: "Précision", en: "Hit chance", unit: " %" },
+  { key: "BleedDPS", fr: "Saignement (DPS)", en: "Bleed DPS", unit: "" },
+  { key: "IgniteDPS", fr: "Embrasement (DPS)", en: "Ignite DPS", unit: "" },
+  { key: "PoisonDPS", fr: "Poison (DPS)", en: "Poison DPS", unit: "" },
+];
+
+const offence = computed(() => {
+  const sk = state.value?.data?.skills[0];
+  const before = sk?.statsBefore;
+  const after = sk?.statsAfter?.[slotIndex.value];
+  if (!sk || !before || !after) return { label: "", rows: [] };
+  const rows = OFF.filter((o) => {
+    const b = before[o.key];
+    const a = after[o.key];
+    return (b != null || a != null) && Math.abs((a ?? 0) - (b ?? 0)) > 0.0005;
+  }).map((o) => ({ ...o, before: before[o.key] ?? 0, after: after[o.key] ?? 0 }));
+  return { label: sk.label, rows };
+});
 
 function diff(key: string) {
   const s = slot.value;
@@ -198,7 +263,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   top: 8vh;
   right: calc(var(--game-panel, 0px) + 1.5rem);
   z-index: 60;
-  width: 30rem;
+  width: 34rem;
   max-height: 84vh;
   overflow: auto;
   border: 1px solid theme("colors.blue.400");
@@ -285,6 +350,21 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 .pc-num {
   font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
   text-align: right;
+}
+.pc-mods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 4px 16px 6px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.pc-cap {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: theme("colors.gray.400");
+  margin-bottom: 2px;
 }
 .pc-verdict {
   padding: 8px 10px;

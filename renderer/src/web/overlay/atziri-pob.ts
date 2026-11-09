@@ -38,8 +38,21 @@ export interface PobBuild {
 
 export interface PobCompare {
   item: string;
-  slots: Array<{ slot: string; current?: string; before: PobStats; after: PobStats }>;
-  skills: Array<{ label: string; before: number; after: number[] }>;
+  lines?: string[];
+  slots: Array<{
+    slot: string;
+    current?: string;
+    currentLines?: string[];
+    before: PobStats;
+    after: PobStats;
+  }>;
+  skills: Array<{
+    label: string;
+    before: number;
+    after: number[];
+    statsBefore?: PobStats;
+    statsAfter?: PobStats[];
+  }>;
 }
 
 async function json<T>(r: Response): Promise<T> {

@@ -55,6 +55,19 @@ local function pick(out)
   return t
 end
 
+-- attack / spell numbers of the main skill, for Ctrl + B
+local OFFENCE_KEYS = {
+  "AverageHit", "AverageDamage", "CritChance", "CritMultiplier", "Speed", "HitChance",
+  "TotalMin", "TotalMax", "BleedDPS", "IgniteDPS", "PoisonDPS", "TotalDot",
+}
+function offence(out)
+  local t = {}
+  for _, k in ipairs(OFFENCE_KEYS) do
+    if type(out[k]) == "number" then t[k] = out[k] end
+  end
+  return t
+end
+
 local function dpsOf(out)
   return out.CombinedDPS or out.TotalDPS or 0
 end
@@ -143,6 +156,18 @@ local function stats()
   }
 end
 
+-- mod lines of an item (implicits, runes, explicits), as PoB reads them
+local function modLines(item)
+  local t = {}
+  if not item then return t end
+  for _, list in ipairs({ item.runeModLines, item.enchantModLines, item.implicitModLines, item.explicitModLines }) do
+    for _, l in ipairs(list or {}) do
+      if l.line and l.line ~= "" then t[#t + 1] = l.line end
+    end
+  end
+  return t
+end
+
 local function compare(rawItem)
   local item = new("Item", rawItem)
   if not item.base then
@@ -155,7 +180,7 @@ local function compare(rawItem)
     local slot = build.itemsTab.slots[slotName]
     if slot and build.itemsTab:IsItemValidForSlot(item, slotName) then
       local cur = build.itemsTab.items[slot.selItemId]
-      slots[#slots + 1] = { slot = slotName, current = cur and cur.name or nil }
+      slots[#slots + 1] = { slot = slotName, current = cur and cur.name or nil, currentLines = modLines(cur) }
     end
   end
   if #slots == 0 then return nil, "no slot" end
@@ -170,14 +195,17 @@ local function compare(rawItem)
   local skills = eachSkill(function(g)
     local calcFunc, base = build.calcsTab:GetMiscCalculator()
     local before = dpsOf(base)
-    local r = { label = g.label, before = before, after = {} }
+    local r = { label = g.label, before = before, after = {},
+      statsBefore = offence(base), statsAfter = {} }
     for _, s in ipairs(slots) do
-      r.after[#r.after + 1] = dpsOf(calcFunc({ repSlotName = s.slot, repItem = item }))
+      local o = calcFunc({ repSlotName = s.slot, repItem = item })
+      r.after[#r.after + 1] = dpsOf(o)
+      r.statsAfter[#r.statsAfter + 1] = offence(o)
     end
     if before > 0 or r.after[1] > 0 then return r end
   end)
   table.sort(skills, function(a, b) return a.before > b.before end)
-  return { item = item.name, slots = slots, skills = skills }
+  return { item = item.name, lines = modLines(item), slots = slots, skills = skills }
 end
 
 local function handle(msg)
