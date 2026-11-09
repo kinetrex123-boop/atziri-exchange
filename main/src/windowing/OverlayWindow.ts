@@ -49,6 +49,8 @@ export class OverlayWindow {
         allowRunningInsecureContent: false,
         webviewTag: true,
         spellcheck: false,
+        // Atziri Exchange: keep updating while hidden (no stale image on return)
+        backgroundThrottling: false,
       },
     });
 
@@ -69,6 +71,10 @@ export class OverlayWindow {
         if (!this.isInteractable || this.poeWindow.isActive) return;
         if (this.window?.isFocused()) return;
         this.isInteractable = false;
+        // Windows shows the last image of the window when the game comes
+        // back: keep it invisible until the closed state has been drawn
+        this.window?.setOpacity(0);
+        this.hiddenUntilRedraw = true;
         this.server.sendEventTo("broadcast", {
           name: "MAIN->OVERLAY::focus-change",
           payload: { game: false, overlay: false, usingHotkey: false },
@@ -126,7 +132,21 @@ export class OverlayWindow {
     }
   }
 
+  private hiddenUntilRedraw = false;
+  private revealTimer?: NodeJS.Timeout;
+
+  /** back to fully visible (see the "blur" handler) */
+  private reveal(delayMs: number) {
+    if (!this.hiddenUntilRedraw) return;
+    clearTimeout(this.revealTimer);
+    this.revealTimer = setTimeout(() => {
+      this.hiddenUntilRedraw = false;
+      this.window?.setOpacity(1);
+    }, delayMs);
+  }
+
   assertOverlayActive = () => {
+    this.reveal(0);
     if (!this.isInteractable) {
       this.isInteractable = true;
 
@@ -238,6 +258,11 @@ export class OverlayWindow {
     });
     this.isOverlayKeyUsed = false;
     this.syncWindowVisibility();
+    // game back in front: give the overlay time to draw its closed state
+    if (isActive) {
+      this.window?.webContents.invalidate();
+      this.reveal(400);
+    }
   };
 
   private syncWindowVisibility() {
