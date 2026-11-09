@@ -38,16 +38,26 @@
             alertCount
           }}</span>
         </button>
-        <button
-          v-for="tab in WEB_TABS.filter((t) => t.id !== 'ninja')"
-          :key="tab.id"
-          type="button"
-          role="tab"
-          :aria-selected="hubTab === tab.id"
-          @click="hubTab = tab.id"
-        >
-          <i class="fas ar-tabfa" :class="tab.icon"></i>{{ tab.label }}
-        </button>
+        <template v-for="tab in WEB_TABS.filter((t) => t.id !== 'ninja')" :key="tab.id">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="hubTab === tab.id"
+            @click="hubTab = tab.id"
+          >
+            <i class="fas ar-tabfa" :class="tab.icon"></i>{{ tab.label }}
+          </button>
+          <!-- craft cost tracking, right after the Craft of Exile page -->
+          <button
+            v-if="tab.id === 'craft'"
+            type="button"
+            role="tab"
+            :aria-selected="hubTab === 'crafttrack'"
+            @click="hubTab = 'crafttrack'"
+          >
+            <i class="fas fa-flask ar-tabfa"></i>{{ tr("Suivi craft", "Craft tracking") }}
+          </button>
+        </template>
         <!-- Farm journal (replaces the Atziri Regex tab for now: RegexPane.vue
              is kept, put the tab back here to restore it) -->
         <button
@@ -119,6 +129,7 @@
 
     <FarmPane v-show="hubTab === 'farm'" />
     <StatsPane v-show="hubTab === 'stats'" />
+    <CraftPane v-show="hubTab === 'crafttrack'" />
     <HistoryPane v-if="hubTab === 'history'" />
 
     <div v-show="hubTab === 'market'" class="ar-body">
@@ -315,6 +326,7 @@ import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
 import StatsPane from "./StatsPane.vue";
+import CraftPane from "./CraftPane.vue";
 import HistoryPane from "./HistoryPane.vue";
 import ConverterBox from "./ConverterBox.vue";
 import { setRates } from "./atziri-money";
@@ -496,6 +508,7 @@ const activeTabLabel = computed(() => {
   if (hubTab.value === "market") return "Economy";
   if (hubTab.value === "farm") return "Farm";
   if (hubTab.value === "stats") return "Stats";
+  if (hubTab.value === "crafttrack") return tr("Suivi craft", "Craft tracking");
   if (hubTab.value === "history") return tr("Historique", "History");
   return WEB_TABS.find((t) => t.id === hubTab.value)?.label ?? "";
 });

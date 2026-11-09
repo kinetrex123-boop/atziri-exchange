@@ -54,6 +54,8 @@
     >
     <loading-animation />
     <PobComparePanel />
+    <!-- Suivi craft: counter of the armed currency, while playing -->
+    <CraftMini v-if="!active && !hideUI" />
     <div
       v-if="showEditingNotification"
       class="widget-default-style p-6 bg-blue-600 mx-auto text-center text-base mt-6"
@@ -105,6 +107,8 @@ import DevWidget from "./DevWidget.vue";
 import MarketPrices from "./MarketPrices.vue";
 import { initFarmCapture } from "./atziri-farm-capture";
 import PobComparePanel from "./PobComparePanel.vue";
+import CraftMini from "./CraftMini.vue";
+import { initCraftCapture, armedEntry } from "./atziri-craft";
 import {
   initPobCompare,
   pobCompareState,
@@ -119,6 +123,7 @@ export default defineComponent({
     DevWidget,
     MarketPrices,
     PobComparePanel,
+    CraftMini,
   },
   setup() {
     usePoeninja();
@@ -127,6 +132,7 @@ export default defineComponent({
     // Atziri Exchange: Farm tab timer and loot hotkey (overlay only)
     initFarmCapture();
     initPobCompare();
+    initCraftCapture();
 
     const active = shallowRef(!Host.isElectron);
     const gameFocused = shallowRef(false);
@@ -315,6 +321,7 @@ export default defineComponent({
       if (active.value) return true;
       if (showEditingNotification.value) return true;
       if (AppConfig().logKeys) return true;
+      if (armedEntry.value && !hideUI.value) return true;
 
       return visibilityState.value.some((w) => w.isVisible);
     });
@@ -518,6 +525,8 @@ export default defineComponent({
         () => !active.value && showEditingNotification.value,
       ),
       registry,
+      active,
+      hideUI,
       isDev: import.meta.env.DEV,
     };
   },

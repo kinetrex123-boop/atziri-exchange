@@ -147,6 +147,11 @@ export function atziriMigrations() {
     itemCheck.atziriPobKey = "Ctrl + B";
     saveConfig();
   }
+  // "Suivi craft" tab: pause / resume the click counter, Ctrl + Alt + C by default
+  if (itemCheck && itemCheck.atziriCraftPauseKey === undefined) {
+    itemCheck.atziriCraftPauseKey = "Ctrl + Alt + C";
+    saveConfig();
+  }
 }
 
 export function poeWebApi() {
@@ -800,6 +805,12 @@ function getConfigForHost(): HostConfig {
     actions.push({
       shortcut: itemCheck.atziriPobKey,
       action: { type: "copy-item", target: "atziri-pob-compare", focusOverlay: true },
+    });
+  }
+  if (itemCheck.atziriCraftPauseKey) {
+    actions.push({
+      shortcut: itemCheck.atziriCraftPauseKey,
+      action: { type: "trigger-event", target: "atziri-craft-pause" },
     });
   }
   if (itemCheck.atziriFarmKey) {

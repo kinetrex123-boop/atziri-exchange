@@ -9,6 +9,8 @@ export interface ItemCheckWidget extends Widget {
   atziriFarmKey?: string | null;
   // Atziri Exchange: compares the hovered item with the Path of Building build
   atziriPobKey?: string | null;
+  // Atziri Exchange: pauses / resumes the click counter of the "Suivi craft" tab
+  atziriCraftPauseKey?: string | null;
   craftOfExileKey: string | null;
   stashSearchKey: string | null;
   samePricedKey: string | null;

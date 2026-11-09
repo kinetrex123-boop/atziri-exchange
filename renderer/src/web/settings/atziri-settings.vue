@@ -144,6 +144,12 @@
         }}</label>
         <hotkey-input v-model="pobKey" class="w-48" />
       </div>
+      <div class="flex">
+        <label class="flex-1">{{
+          tr("Mettre en pause le compteur (onglet Suivi craft)", "Pause the counter (Craft tracking tab)")
+        }}</label>
+        <hotkey-input v-model="craftPauseKey" class="w-48" />
+      </div>
       <HotkeysGeneric :hotkeys="priceCheckHotkeys" />
     </div>
 
@@ -618,6 +624,7 @@ const tooltipHover = configModelValue(
 const poedbKey = configModelValue(() => itemCheck.value, "poedbKey");
 const farmKey = configModelValue(() => itemCheck.value, "atziriFarmKey");
 const pobKey = configModelValue(() => itemCheck.value, "atziriPobKey");
+const craftPauseKey = configModelValue(() => itemCheck.value, "atziriCraftPauseKey");
 
 const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
   {

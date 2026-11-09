@@ -90,6 +90,16 @@ export class Shortcuts {
       );
     });
 
+    // Atziri Exchange: "Suivi craft" tab, Shift + left click in the game
+    // counts one use of the armed currency
+    uIOhook.on("mousedown", (e) => {
+      if (e.button !== 1 || !e.shiftKey || !this.poeWindow.isActive) return;
+      this.server.sendEventTo("broadcast", {
+        name: "MAIN->CLIENT::widget-action",
+        payload: { target: "atziri-craft-click" },
+      });
+    });
+
     uIOhook.on("wheel", (e) => {
       if (!e.ctrlKey || !this.poeWindow.isActive || !this.stashScroll) return;
 
