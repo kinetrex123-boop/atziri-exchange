@@ -34,6 +34,7 @@
     <webview
       ref="webviewEl"
       class="ar-webview"
+      :style="{ opacity: painted ? 1 : 0 }"
       partition="persist:atziri-browser"
       :src="initialSrc"
       allowpopups
@@ -68,6 +69,23 @@ interface WebviewElement extends HTMLElement {
   reload(): void;
 }
 const webviewEl = shallowRef<WebviewElement | null>(null);
+const painted = shallowRef(false);
+// never stay invisible if a page is very slow
+setTimeout(() => (painted.value = true), 4000);
+// first time the tab is shown: the page draws itself only now, so give it
+// a short moment hidden as well
+let shownOnce = false;
+const seen = new IntersectionObserver((entries) => {
+  if (shownOnce || !entries.some((e) => e.isIntersecting)) return;
+  shownOnce = true;
+  seen.disconnect();
+  painted.value = false;
+  // not loaded yet: "dom-ready" will show it
+  if (ready) setTimeout(() => (painted.value = true), 250);
+});
+watch(webviewEl, (el) => {
+  if (el) seen.observe(el);
+});
 let ready = false;
 let pendingUrl: string | null = null;
 
@@ -79,7 +97,11 @@ watch(webviewEl, (el) => {
       const url = pendingUrl;
       pendingUrl = null;
       el.loadURL(url);
+      return; // show it once the requested page is there
     }
+    // Atziri Exchange: the page stays invisible (dark background behind)
+    // until it has had time to draw, instead of a white flash
+    if (!painted.value) setTimeout(() => (painted.value = true), 150);
   });
   const onNav = (e: Event & { url?: string }) => {
     if (!e.url) return;

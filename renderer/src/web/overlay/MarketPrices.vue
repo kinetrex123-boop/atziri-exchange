@@ -1449,7 +1449,8 @@ const rows = computed(() => {
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--bg);
+  transition: opacity 0.2s;
 }
 
 .ar-tabs button[aria-selected="true"] .ar-tabico {
