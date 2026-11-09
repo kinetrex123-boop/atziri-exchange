@@ -11,6 +11,7 @@ export interface PobStatus {
   ninjaUpdatedUtc: string | null;
   ninjaCheckedAt: number | null;
   ninjaError: string | null;
+  ninjaAuto: boolean;
 }
 
 export type PobStats = Record<string, number>;
@@ -118,5 +119,17 @@ export async function pobSelectNinja(url: string) {
     await fetch(`/atziri-pob/select?file=ninja&url=${encodeURIComponent(url)}`, {
       method: "POST",
     }),
+  );
+}
+
+/** asks poe.ninja to fetch the character again (needs the poe.ninja login) */
+export async function pobNinjaRefresh() {
+  return await json<PobStatus & { refresh: "ok" | "login" | "cooldown" | "error" }>(
+    await fetch("/atziri-pob/ninja-refresh", { method: "POST" }),
+  );
+}
+export async function pobNinjaAuto(on: boolean) {
+  return await json<PobStatus>(
+    await fetch(`/atziri-pob/ninja-auto?on=${on ? 1 : 0}`, { method: "POST" }),
   );
 }

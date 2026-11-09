@@ -65,6 +65,21 @@
         </span>
         <span v-if="status?.ninjaError" class="st-err">{{ status.ninjaError }}</span>
       </div>
+      <!-- ask poe.ninja to fetch the character again (its "Refresh character") -->
+      <div v-if="status?.selected === 'ninja' && status.ninja" class="st-ninja">
+        <button type="button" class="st-btn" :disabled="refreshing" @click="ninjaRefresh">
+          <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
+          {{ refreshing ? tr("poe.ninja relit ton perso…", "poe.ninja is fetching…") : tr("Actualiser mon perso sur poe.ninja", "Refresh my character on poe.ninja") }}
+        </button>
+        <label class="st-muted st-check">
+          <input type="checkbox" :checked="status.ninjaAuto" @change="setAuto(($event.target as HTMLInputElement).checked)" />
+          {{ tr("Automatiquement toutes les 15 min", "Automatically every 15 min") }}
+        </label>
+        <span v-if="refreshMsg" :class="refreshOk ? 'st-ok' : 'st-err'">{{ refreshMsg }}</span>
+        <button v-if="needLogin" type="button" class="st-btn" @click="openNinjaLogin">
+          {{ tr("Ouvrir poe.ninja pour me connecter", "Open poe.ninja to log in") }}
+        </button>
+      </div>
       <div v-if="error && ready" class="st-err">{{ error }}</div>
 
       <template v-if="build">
@@ -174,13 +189,15 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch, onMounted } from "vue";
 import { tr, isFrench } from "@/web/atziri-lang";
-import { hubTab } from "./atziri-hub";
+import { hubTab, openInHub } from "./atziri-hub";
 import {
   pobStatus,
   pobSelect,
   pobStats,
   pobOpen,
   pobSelectNinja,
+  pobNinjaRefresh,
+  pobNinjaAuto,
   slotLabel,
   fmtNum,
   type PobStatus,
@@ -254,6 +271,47 @@ async function choose(file: string) {
     // ignore
   }
   await refresh();
+}
+
+// --- poe.ninja "Refresh character" ---
+const refreshing = shallowRef(false);
+const refreshMsg = shallowRef("");
+const refreshOk = shallowRef(false);
+const needLogin = shallowRef(false);
+async function ninjaRefresh() {
+  refreshing.value = true;
+  refreshMsg.value = "";
+  needLogin.value = false;
+  try {
+    const r = await pobNinjaRefresh();
+    status.value = r;
+    refreshOk.value = r.refresh === "ok";
+    needLogin.value = r.refresh === "login";
+    refreshMsg.value =
+      r.refresh === "ok"
+        ? tr("Perso actualisé.", "Character refreshed.")
+        : r.refresh === "login"
+          ? tr("Connecte-toi d'abord à poe.ninja dans l'onglet poe.ninja (icône profil en haut à droite > Log in), puis réessaie.", "Log in to poe.ninja first in the poe.ninja tab (profile icon top right > Log in), then try again.")
+          : r.refresh === "cooldown"
+            ? tr("poe.ninja limite les actualisations : réessaie dans quelques minutes.", "poe.ninja limits refreshes: try again in a few minutes.")
+            : tr("poe.ninja n'a pas pu actualiser le perso.", "poe.ninja could not refresh the character.");
+  } catch (e) {
+    refreshOk.value = false;
+    refreshMsg.value = (e as Error).message;
+  } finally {
+    refreshing.value = false;
+  }
+  if (refreshOk.value) await refresh();
+}
+async function setAuto(on: boolean) {
+  try {
+    status.value = await pobNinjaAuto(on);
+  } catch {
+    // ignore
+  }
+}
+function openNinjaLogin() {
+  openInHub("https://poe.ninja/poe2/builds", "ninja");
 }
 
 // --- character followed on poe.ninja ---
@@ -355,6 +413,16 @@ watch(hubTab, (t) => {
 .st-muted {
   color: var(--muted);
   font-size: 0.85rem;
+}
+.st-ok {
+  color: #9cc46f;
+  font-size: 0.85rem;
+}
+.st-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
 }
 .st-err {
   color: #d9584a;
