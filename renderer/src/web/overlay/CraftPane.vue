@@ -933,7 +933,7 @@ function confirmRemoveBase(id: number, name: string) {
 /* bases */
 .cr-bases {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 10px;
 }
 .cr-base {
@@ -945,21 +945,31 @@ function confirmRemoveBase(id: number, name: string) {
   background: var(--surface);
   padding: 7px 10px;
 }
-.cr-bi {
-  width: 34px;
-  height: 34px;
+.cr-bi,
+.cr-icb > span {
+  width: 36px;
+  height: 36px;
   flex: none;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: var(--bg);
+  border-radius: 50%;
+  border: 2px solid #b8873f;
+  background: radial-gradient(circle at 40% 35%, #2a2018, #0e0b09);
+  box-shadow: inset 0 0 6px #000;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--accent);
 }
+.cr-bi {
+  color: #e6c27a;
+}
 .cr-bi svg {
   width: 20px;
   height: 20px;
+}
+.cr-icb > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .cr-bname {
   flex: 1;
@@ -1003,9 +1013,9 @@ function confirmRemoveBase(id: number, name: string) {
   color: var(--fg);
 }
 .cr-icb svg {
-  width: 24px;
-  height: 24px;
-  color: var(--accent);
+  width: 20px;
+  height: 20px;
+  color: #e6c27a;
 }
 .fm-wrap .cr-icb.on,
 .fm-wrap .cr-icb:hover {
