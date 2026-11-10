@@ -30,6 +30,7 @@ export interface CraftBase {
   id: number;
   name: string;
   url: string;
+  icon?: string; // id from CRAFT_BASE_ICONS
 }
 
 interface CraftState {
@@ -38,6 +39,8 @@ interface CraftState {
   armedKey: string | null;
   paused: boolean;
   bases: CraftBase[];
+  // contents of the grid cells changed by the player (cell id -> item key)
+  slots: Record<string, string | null>;
 }
 
 const KEY = "atziri-craft";
@@ -58,6 +61,7 @@ function load(): CraftState {
         armedKey: s.armedKey ?? null,
         paused: Boolean(s.paused),
         bases: Array.isArray(s.bases) ? s.bases : [],
+        slots: s.slots && typeof s.slots === "object" ? s.slots : {},
       };
     }
   } catch {
@@ -70,6 +74,7 @@ function load(): CraftState {
     armedKey: null,
     paused: false,
     bases: [],
+    slots: {},
   };
 }
 
@@ -238,9 +243,19 @@ export function setPaused(paused: boolean) {
 }
 
 // ---- crafting bases ----
-export function addBase(url: string, name: string) {
+export function addBase(url: string, name: string, icon?: string) {
   update((s) => {
-    s.bases.push({ id: newId(), name, url });
+    s.bases.push({ id: newId(), name, url, icon });
+  });
+}
+
+export function updateBase(id: number, data: { name: string; url: string; icon?: string }) {
+  update((s) => {
+    const b = s.bases.find((x) => x.id === id);
+    if (!b) return;
+    if (data.name.trim()) b.name = data.name.trim();
+    if (data.url) b.url = data.url;
+    b.icon = data.icon;
   });
 }
 
@@ -266,8 +281,72 @@ export interface CatalogItem {
   divines: number;
 }
 
-/** poe.ninja categories offered in the list (Ritual = omens) */
-export const CRAFT_TYPES = ["Currency", "Ritual", "Essences"] as const;
+/** poe.ninja categories offered in the list (Ritual = omens, Verisium = alloys) */
+export const CRAFT_TYPES = ["Currency", "Essences", "Ritual", "Verisium", "Runes"] as const;
+
+// ---- grid laid out like the game's Currency stash tab ----
+export interface GridCell {
+  id: string;
+  spacer?: boolean; // empty spot of the game layout (hidden unless editing)
+}
+const C = (name: string) => `Currency|${name}`;
+/** game layout: cell id -> default item key */
+export const GRID_DEFAULTS: Record<string, string | null> = {
+  L0: C("Orb of Transmutation"), L1: C("Greater Orb of Transmutation"), L2: C("Perfect Orb of Transmutation"),
+  L3: C("Orb of Augmentation"), L4: C("Greater Orb of Augmentation"), L5: C("Perfect Orb of Augmentation"),
+  L6: C("Regal Orb"), L7: C("Greater Regal Orb"), L8: C("Perfect Regal Orb"),
+  L9: C("Exalted Orb"), L10: C("Greater Exalted Orb"), L11: C("Perfect Exalted Orb"),
+  L12: C("Chaos Orb"), L13: C("Greater Chaos Orb"), L14: C("Perfect Chaos Orb"),
+  M0: C("Orb of Alchemy"), M1: C("Vaal Orb"), M2: C("Orb of Annulment"),
+  M3: C("Orb of Chance"), M4: C("Fracturing Orb"), M5: C("Divine Orb"),
+  M6: null, M7: C("Mirror of Kalandra"), M8: C("Hinekora's Lock"),
+  R0: C("Lesser Jeweller's Orb"), R1: C("Greater Jeweller's Orb"), R2: C("Perfect Jeweller's Orb"),
+  R3: null, R4: null, R5: C("Artificer's Orb"),
+  R6: C("Arcanist's Etcher"), R7: C("Armourer's Scrap"), R8: C("Blacksmith's Whetstone"),
+  R9: null, R10: C("Glassblower's Bauble"), R11: C("Gemcutter's Prism"),
+};
+const cells = (p: string, n: number) =>
+  Array.from({ length: n }, (_, i): GridCell => ({ id: `${p}${i}`, spacer: GRID_DEFAULTS[`${p}${i}`] === null }));
+export const GRID_BLOCKS = {
+  left: cells("L", 15),
+  mid: cells("M", 9),
+  right: cells("R", 12),
+  free: Array.from({ length: 14 }, (_, i): GridCell => ({ id: `F${i}` })),
+};
+
+/** item key in a cell (player's choice, else the game layout) */
+export function slotKey(id: string): string | null {
+  const own = craft.value.slots[id];
+  if (own !== undefined) return own;
+  return GRID_DEFAULTS[id] ?? null;
+}
+
+export function setSlot(id: string, key: string | null) {
+  update((s) => {
+    s.slots[id] = key;
+  });
+}
+
+export function resetSlots() {
+  update((s) => {
+    s.slots = {};
+  });
+}
+
+/** clicking a grid cell: the item joins the session (if needed) and is armed */
+export function useSlotItem(key: string) {
+  const [type, ...rest] = key.split("|");
+  const ref = rest.join("|");
+  const item = catalog.value.find((c) => c.key === key);
+  update((s) => {
+    const sess = cur(s);
+    if (!sess.entries.some((e) => e.key === key)) {
+      sess.entries.push({ key, type, ref, icon: item?.icon, count: 0, price: item?.divines ?? 0 });
+    }
+    s.armedKey = s.armedKey === key ? null : key;
+    s.paused = false;
+  });
+}
 
 export const catalog = shallowRef<CatalogItem[]>([]);
 export const catalogAt = shallowRef<number | null>(null);
@@ -284,13 +363,20 @@ export async function loadCatalog(force = false) {
     const items: CatalogItem[] = [];
     let exalted: number | undefined;
     let chaos: number | undefined;
-    for (const type of CRAFT_TYPES) {
+    const fetchType = async (type: string) => {
       const query = `league=${encodeURIComponent(league).replace(/%20/g, "+")}&type=${type}`;
       const res = await Host.proxy(
         `poe.ninja/poe2/api/economy/exchange/current/overview?${query}`,
       );
-      if (!res.ok) continue;
-      const data = (await res.json()) as {
+      return res.ok ? { type, data: await res.json() } : null;
+    };
+    const results = await Promise.all(
+      CRAFT_TYPES.map((t) => fetchType(t).catch(() => null)),
+    );
+    for (const r of results) {
+      if (!r) continue;
+      const { type } = r;
+      const data = r.data as {
         core?: { rates?: Record<string, number> };
         lines?: Array<{ id: string; primaryValue: number }>;
         items?: Array<{ id: string; name: string; image?: string }>;
