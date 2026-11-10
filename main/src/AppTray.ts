@@ -1,6 +1,7 @@
 import path from "path";
 import { app, Tray, Menu, shell, nativeImage, dialog } from "electron";
 import type { ServerEvents } from "./server";
+import { onBrand } from "./atziri-brand";
 
 export class AppTray {
   public overlayKey = "Shift + Space";
@@ -24,6 +25,12 @@ export class AppTray {
 
     this.tray = new Tray(trayImage);
     this.tray.setToolTip(`Atziri Exchange v${app.getVersion()}`);
+    // Atziri Exchange: name and icon chosen in Atziri réglage
+    const defaultImage = trayImage;
+    onBrand((name, img) => {
+      this.tray.setToolTip(`${name} v${app.getVersion()}`);
+      this.tray.setImage(img ?? defaultImage);
+    });
     this.rebuildMenu();
 
     server.onEventAnyClient("CLIENT->MAIN::user-action", ({ action }) => {

@@ -30,6 +30,14 @@ export const THEME_PRESETS: Record<string, { label: string; colors: ThemeColors 
     label: "Délire",
     colors: { bg: "#0f0f13", surface: "#18181f", line: "#34333f", fg: "#e6e4ee", muted: "#9a97ab", accent: "#c3b8e8" },
   },
+  noir: {
+    label: "Noir et blanc",
+    colors: { bg: "#0b0b0b", surface: "#171717", line: "#3a3a3a", fg: "#ededed", muted: "#9c9c9c", accent: "#d9d9d9" },
+  },
+  violet: {
+    label: "Violet",
+    colors: { bg: "#0e0a14", surface: "#1a1326", line: "#3d2d58", fg: "#ece4f8", muted: "#a596bf", accent: "#a970ff" },
+  },
 };
 
 export const DEFAULT_THEME = THEME_PRESETS.braise.colors;

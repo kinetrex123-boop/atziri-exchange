@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import { app, BrowserWindow, screen, shell } from "electron";
 import type { Server, IncomingMessage, ServerResponse } from "http";
+import { applyBrandToWindow } from "./atziri-brand";
 
 interface Bounds {
   x: number;
@@ -72,6 +73,7 @@ function openWindow(port: number) {
     },
   });
   win.setMenu(null);
+  applyBrandToWindow(win, path.join(__dirname, process.env.STATIC!, "icon.png"));
 
   // same protections as the overlay: web tabs are plain web pages
   const wc = win.webContents;

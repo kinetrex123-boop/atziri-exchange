@@ -22,7 +22,7 @@
         </button>
       </div>
       <div class="ar-brand">
-        <img class="ar-logo" src="/icon.png" alt="" width="64" height="64" />
+        <img class="ar-logo" :src="brandIconUrl(brand.icon)" alt="" width="64" height="64" />
         <h1 class="ar-h1">{{ activeTabLabel }}</h1>
       </div>
       <ConverterBox class="ar-converter-pos" />
@@ -299,6 +299,7 @@ import FarmPane from "./FarmPane.vue";
 import StatsPane from "./StatsPane.vue";
 import CraftPane from "./CraftPane.vue";
 import ConfirmBox from "./ConfirmBox.vue";
+import { brand, brandIconUrl } from "@/web/atziri-brand";
 import HistoryPane from "./HistoryPane.vue";
 import ConverterBox from "./ConverterBox.vue";
 import { setRates } from "./atziri-money";

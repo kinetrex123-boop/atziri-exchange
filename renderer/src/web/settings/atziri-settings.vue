@@ -320,16 +320,23 @@
         >
           <span>{{ tr(bg.label, BG_NAMES_EN[bg.id] ?? bg.label) }}</span>
         </button>
+        <!-- images imported earlier, kept to be picked again -->
         <button
-          v-if="backgrounds[slot.id].startsWith('upload:')"
+          v-for="(up, i) in bgUploads"
+          :key="up"
           type="button"
-          class="atz-bg is-active"
-          :style="{
-            backgroundImage: `url(${backgroundUrl(backgrounds[slot.id])})`,
-          }"
+          class="atz-bg"
+          :class="{ 'is-active': backgrounds[slot.id] === up }"
+          :style="{ backgroundImage: `url(${backgroundUrl(up)})` }"
           :title="tr('Ton image', 'Your image')"
+          @click="setBackground(slot.id, up)"
         >
-          <span>{{ tr("Ton image", "Your image") }}</span>
+          <span>{{ tr("Ton image", "Your image") }} {{ i + 1 }}</span>
+          <i
+            class="atz-bg-x fas fa-times"
+            :title="tr('Retirer cette image de la liste', 'Remove this image from the list')"
+            @click.stop="removeUpload(up)"
+          ></i>
         </button>
         <button
           type="button"
@@ -349,6 +356,51 @@
           />
         </label>
       </div>
+    </div>
+
+    <!-- Name and icon of the overlay -->
+    <div class="atz-palette-title mt-5">{{ tr("Nom et icône de l'overlay", "Overlay name and icon") }}</div>
+    <div class="atz-palette-sub">{{ tr("Nom affiché", "Displayed name") }}</div>
+    <input
+      class="rounded bg-gray-900 px-2 py-1 w-full mb-1"
+      maxlength="40"
+      :value="brandName"
+      placeholder="Atziri Exchange"
+      @input="typedBrandName(($event.target as HTMLInputElement).value)"
+    />
+    <p class="text-gray-500 text-sm mb-3">
+      {{ tr("Icône près de l'horloge, fenêtre détachée et logo de Shift + Espace. Le raccourci du bureau garde le nom installé.", "Tray icon, detached window and Shift + Space logo. The desktop shortcut keeps the installed name.") }}
+    </p>
+    <div class="atz-palette-sub">{{ tr("Icône", "Icon") }}</div>
+    <div class="atz-icons">
+      <button
+        v-for="p in BRAND_ICON_PRESETS"
+        :key="p.id"
+        type="button"
+        class="atz-icon"
+        :class="{ 'is-active': brand.icon === p.id }"
+        :title="tr(p.fr, p.en)"
+        @click="setBrand({ icon: p.id })"
+      >
+        <img :src="p.url" alt="" />
+        <span>{{ tr(p.fr, p.en) }}</span>
+      </button>
+      <button
+        v-for="(up, i) in bgUploads"
+        :key="up"
+        type="button"
+        class="atz-icon"
+        :class="{ 'is-active': brand.icon === up }"
+        @click="setBrand({ icon: up })"
+      >
+        <img :src="brandIconUrl(up)" alt="" />
+        <span>{{ tr("Ton image", "Your image") }} {{ i + 1 }}</span>
+      </button>
+      <label class="atz-icon" :title="tr('Choisir une image sur le PC', 'Pick an image on this PC')">
+        <i class="fas fa-upload"></i>
+        <span>{{ tr("Importer…", "Import…") }}</span>
+        <input type="file" accept="image/*" class="hidden" @change="importBrandIcon($event)" />
+      </label>
     </div>
   </div>
   </div>
@@ -392,8 +444,12 @@ import {
   backgrounds,
   backgroundUrl,
   setBackground,
+  bgUploads,
+  addUpload,
+  removeUpload,
   type BgSlot,
 } from "../atziri-backgrounds";
+import { brand, setBrand, brandIconUrl, BRAND_ICON_PRESETS } from "../atziri-brand";
 import { Host } from "@/web/background/IPC";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
 
@@ -412,6 +468,8 @@ const THEME_NAMES_EN: Record<string, string> = {
   vaal: "Vaal",
   sang: "Blood",
   delire: "Delirium",
+  noir: "Black & white",
+  violet: "Purple",
 };
 const BG_NAMES_EN: Record<string, string> = {
   temple: "Atziri's Temple",
@@ -514,12 +572,36 @@ const BG_SLOTS: Array<{ id: BgSlot; label: string; labelEn: string }> = [
   { id: "price", label: "Vérification du prix", labelEn: "Price check" },
 ];
 
+// Name and icon of the overlay
+const brandName = shallowRef(brand.value.name);
+let brandTimer: ReturnType<typeof setTimeout> | undefined;
+function typedBrandName(v: string) {
+  brandName.value = v;
+  clearTimeout(brandTimer);
+  brandTimer = setTimeout(() => {
+    setBrand({ name: v.trim() || "Atziri Exchange" }).catch(() => undefined);
+  }, 500);
+}
+async function importBrandIcon(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    const name = await Host.importFile(file);
+    addUpload(`upload:${name}`);
+    await setBrand({ icon: `upload:${name}` });
+  } finally {
+    input.value = "";
+  }
+}
+
 async function importBackground(slot: BgSlot, e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
   try {
     const name = await Host.importFile(file);
+    addUpload(`upload:${name}`);
     setBackground(slot, `upload:${name}`);
   } finally {
     input.value = "";
@@ -677,6 +759,62 @@ const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
     border-color: theme("colors.blue.400");
   }
 
+  &.is-active {
+    border-color: theme("colors.blue.400");
+    box-shadow: 0 0 0 1px theme("colors.blue.400");
+  }
+}
+
+.atz-bg-x {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgb(var(--c-gray-900) / 0.85);
+  color: theme("colors.gray.300");
+  font-size: 9px;
+  line-height: 16px;
+  text-align: center;
+  display: none;
+}
+.atz-bg:hover .atz-bg-x {
+  display: block;
+}
+.atz-bg-x:hover {
+  color: #d9584a;
+}
+
+.atz-icons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.atz-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px 4px;
+  border-radius: 6px;
+  border: 1px solid theme("colors.gray.700");
+  background: theme("colors.gray.800");
+  cursor: pointer;
+  font-size: 10.5px;
+
+  img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+  }
+  i {
+    font-size: 16px;
+    line-height: 30px;
+  }
+  &:hover {
+    border-color: theme("colors.blue.400");
+  }
   &.is-active {
     border-color: theme("colors.blue.400");
     box-shadow: 0 0 0 1px theme("colors.blue.400");

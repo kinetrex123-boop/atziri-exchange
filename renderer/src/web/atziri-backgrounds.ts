@@ -52,6 +52,43 @@ export function setBackground(slot: BgSlot, value: string) {
   }
 }
 
+// images imported by the player, kept to be picked again later
+const UPLOADS_KEY = "atziri-bg-uploads";
+function loadUploads(): string[] {
+  let list: string[] = [];
+  try {
+    const v = JSON.parse(localStorage.getItem(UPLOADS_KEY) ?? "[]");
+    if (Array.isArray(v)) list = v.filter((x) => typeof x === "string");
+  } catch {
+    // unreadable storage
+  }
+  // images chosen before the list existed
+  for (const value of Object.values(backgrounds.value)) {
+    if (value.startsWith("upload:") && !list.includes(value)) list.push(value);
+  }
+  return list;
+}
+/** "upload:<file name>" of every imported image */
+export const bgUploads = shallowRef<string[]>(loadUploads());
+function saveUploads(list: string[]) {
+  bgUploads.value = list;
+  try {
+    localStorage.setItem(UPLOADS_KEY, JSON.stringify(list));
+  } catch {
+    // ignore unavailable storage
+  }
+}
+export function addUpload(value: string) {
+  if (!bgUploads.value.includes(value)) saveUploads([...bgUploads.value, value]);
+}
+/** removes an imported image from the list (the built-in ones stay) */
+export function removeUpload(value: string) {
+  saveUploads(bgUploads.value.filter((v) => v !== value));
+  for (const slot of ["hub", "price"] as BgSlot[]) {
+    if (backgrounds.value[slot] === value) setBackground(slot, DEFAULTS[slot]);
+  }
+}
+
 export function initBackgrounds() {
   apply();
 }

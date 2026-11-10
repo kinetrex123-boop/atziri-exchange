@@ -21,6 +21,7 @@ import { setupAtziriData } from "./atziri-data";
 import { setupAtziriAutostart, isAutostartEnabled } from "./atziri-autostart";
 import { setupAtziriDetach } from "./atziri-detached";
 import { setupAtziriPob } from "./atziri-pob";
+import { setupAtziriBrand } from "./atziri-brand";
 
 if (!app.requestSingleInstanceLock()) {
   app.exit();
@@ -167,6 +168,7 @@ app.on("browser-window-created", (_e, win) => {
         let hubPort = 0;
         setupAtziriDetach(server, () => hubPort);
         setupAtziriPob(server, logger);
+        setupAtziriBrand(server);
         const port = await startServer(appUpdater, logger);
         hubPort = port;
         // TODO: move up (currently crashes)
