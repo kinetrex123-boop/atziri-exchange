@@ -9,6 +9,7 @@ import { typeInChat, stashSearch } from "./text-box";
 import { WidgetAreaTracker } from "../windowing/WidgetAreaTracker";
 import { HostClipboard } from "./HostClipboard";
 import { OcrWorker } from "../vision/link-main";
+import { isCraftArmed } from "../atziri-craft";
 import type { ShortcutAction } from "../../../ipc/types";
 import type { Logger } from "../RemoteLogger";
 import type { OverlayWindow } from "../windowing/OverlayWindow";
@@ -93,7 +94,7 @@ export class Shortcuts {
     // Atziri Exchange: "Suivi craft" tab, Shift + left click in the game
     // counts one use of the armed currency
     uIOhook.on("mousedown", (e) => {
-      if (e.button !== 1 || !e.shiftKey || !this.poeWindow.isActive) return;
+      if (e.button !== 1 || !e.shiftKey || !isCraftArmed() || !this.poeWindow.isActive) return;
       this.server.sendEventTo("broadcast", {
         name: "MAIN->CLIENT::widget-action",
         payload: { target: "atziri-craft-click" },

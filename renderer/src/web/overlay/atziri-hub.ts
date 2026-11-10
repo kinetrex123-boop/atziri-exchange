@@ -144,3 +144,22 @@ export function isDetachedHub(): boolean {
     return false;
   }
 }
+
+/** a page of the official trade site (and of no look-alike domain) */
+export function isTradeUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname;
+    const official = ["pathofexile.com", "pathofexile.tw", "poe.game.qq.com", "poe.kakaogames.com"];
+    return (
+      u.protocol === "https:" &&
+      official.some((d) => host === d || host.endsWith(`.${d}`)) &&
+      (u.pathname === "/trade2" || u.pathname.startsWith("/trade2/") || u.pathname.startsWith("/trade/"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** true while the Shift + Space page is on screen (overlay open, or its own window shown) */
+export const hubVisible = shallowRef(false);

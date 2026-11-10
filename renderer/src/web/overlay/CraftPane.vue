@@ -327,7 +327,7 @@ import { computed, shallowRef, ref, watch, nextTick, onMounted, onUnmounted } fr
 import { tr, isFrench } from "@/web/atziri-lang";
 import { AppConfig } from "@/web/Config";
 import type { ItemCheckWidget } from "@/web/item-check/widget";
-import { hubTab, openInHub } from "./atziri-hub";
+import { hubTab, hubVisible, openInHub, isTradeUrl } from "./atziri-hub";
 import { rates } from "./atziri-money";
 import { CRAFT_BASE_ICONS, baseIcon } from "./atziri-craft-icons";
 import { askConfirm } from "./atziri-confirm";
@@ -406,8 +406,10 @@ const now = shallowRef(Date.now());
 let clock: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
   clock = setInterval(() => {
+    // nothing to refresh while the page is closed or on another tab
+    if (!hubVisible.value || hubTab.value !== "crafttrack") return;
     now.value = Date.now();
-    if (hubTab.value === "crafttrack") loadCatalog().catch(() => undefined);
+    loadCatalog().catch(() => undefined);
   }, 30000);
 });
 onUnmounted(() => clearInterval(clock));
@@ -424,9 +426,11 @@ const pricesText = computed(() => {
 });
 
 watch(
-  hubTab,
-  (tab) => {
-    if (tab === "crafttrack") loadCatalog().catch(() => undefined);
+  [hubTab, hubVisible],
+  ([tab, visible]) => {
+    if (tab !== "crafttrack" || !visible) return;
+    now.value = Date.now();
+    loadCatalog().catch(() => undefined);
   },
   { immediate: true },
 );
@@ -594,7 +598,7 @@ function startEditBase(b: CraftBase) {
 function saveBase() {
   const f = baseForm.value;
   if (!f) return;
-  if (!/^https:\/\/[\w.-]*(pathofexile\.com|poe\.game\.qq\.com)\/trade2?\//.test(f.url)) {
+  if (!isTradeUrl(f.url)) {
     baseError.value = tr(
       "Colle un lien du site trade (pathofexile.com/trade2/…).",
       "Paste a link from the trade site (pathofexile.com/trade2/…).",

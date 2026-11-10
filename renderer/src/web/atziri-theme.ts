@@ -178,7 +178,7 @@ function loadNames(): Record<string, string> {
 export const themeNames = shallowRef<Record<string, string>>(loadNames());
 export function renameTheme(id: string, name: string) {
   const n = name.trim().slice(0, 30);
-  if (/^d+$/.test(id)) {
+  if (/^\d+$/.test(id)) {
     saveCustom(customThemes.value.map((t) => (String(t.id) === id && n ? { ...t, name: n } : t)));
     return;
   }

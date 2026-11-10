@@ -70,8 +70,13 @@ const props = defineProps({
   tab: { type: Object as PropType<WebTab>, required: true },
 });
 
-// set once: later navigation goes through loadURL so the page keeps its history
-const initialSrc = localizeUrl(webTabUrls.value[props.tab.id] ?? props.tab.home);
+// set once: later navigation goes through loadURL so the page keeps its history.
+// The tab is created the first time it is opened: when a page was asked for
+// (PoEDB shortcut, a favourite...), it is loaded directly.
+const initialSrc =
+  webTabRequest.value?.tab === props.tab.id
+    ? webTabRequest.value.url
+    : localizeUrl(webTabUrls.value[props.tab.id] ?? props.tab.home);
 const addressInput = shallowRef(initialSrc);
 // the parts of Electron's <webview> element used here
 interface WebviewElement extends HTMLElement {
@@ -139,9 +144,6 @@ function load(url: string) {
 watch(webTabRequest, (req) => {
   if (req && req.tab === props.tab.id) load(req.url);
 });
-if (webTabRequest.value?.tab === props.tab.id) {
-  pendingUrl = webTabRequest.value.url;
-}
 
 function goToAddress() {
   let url = addressInput.value.trim();

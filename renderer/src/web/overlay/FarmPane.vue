@@ -248,7 +248,8 @@
 
 <script setup lang="ts">
 import { askConfirm } from "./atziri-confirm";
-import { computed, shallowRef, onMounted, onUnmounted } from "vue";
+import { computed, shallowRef, watch, onMounted, onUnmounted } from "vue";
+import { hubTab, hubVisible } from "./atziri-hub";
 import { tr, isFrench } from "@/web/atziri-lang";
 import { AppConfig } from "@/web/Config";
 import type { ItemCheckWidget } from "@/web/item-check/widget";
@@ -277,8 +278,16 @@ import {
 const isFr = computed(() => isFrench());
 const now = shallowRef(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
+// the clock is redrawn only while the Farm tab is on screen (times are kept
+// as start dates, so nothing is lost meanwhile)
+const farmShown = computed(() => hubVisible.value && hubTab.value === "farm");
 onMounted(() => {
-  timer = setInterval(() => (now.value = Date.now()), 1000);
+  timer = setInterval(() => {
+    if (farmShown.value) now.value = Date.now();
+  }, 1000);
+});
+watch(farmShown, (shown) => {
+  if (shown) now.value = Date.now();
 });
 onUnmounted(() => clearInterval(timer));
 

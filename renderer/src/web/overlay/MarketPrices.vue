@@ -89,13 +89,11 @@
       </button>
     </a>
 
-    <!-- One web page per tab, kept alive (v-show) so each keeps its state -->
-    <WebPane
-      v-for="tab in WEB_TABS"
-      v-show="hubTab === tab.id"
-      :key="tab.id"
-      :tab="tab"
-    />
+    <!-- One web page per tab, loaded the first time the tab is opened, then
+         kept alive (v-show) so each keeps its state -->
+    <template v-for="tab in WEB_TABS" :key="tab.id">
+      <WebPane v-if="openedTabs.has(tab.id)" v-show="hubTab === tab.id" :tab="tab" />
+    </template>
 
     <FarmPane v-show="hubTab === 'farm'" />
     <StatsPane v-show="hubTab === 'stats'" />
@@ -292,7 +290,7 @@ import {
 import { AppConfig } from "@/web/Config";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
 import type { WidgetManager } from "./interfaces";
-import { hubTab, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
+import { hubTab, hubVisible, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
@@ -464,6 +462,29 @@ const props = defineProps<{ visible: boolean }>();
 const ninja = usePoeninja();
 const leagues = useLeagues();
 const wm = inject<WidgetManager>("wm")!;
+
+// shared with the tabs: timers and refreshes stop while the page is closed
+watch(
+  () => props.visible,
+  (visible) => {
+    hubVisible.value = visible;
+  },
+  { immediate: true },
+);
+
+// Web tabs are full web pages: each one is loaded only once its tab has been
+// opened (five sites running from the start cost over 1 GB of memory)
+const openedTabs = shallowRef(new Set<string>());
+watch(
+  [hubTab, () => props.visible],
+  ([tab, visible]) => {
+    if (!visible || openedTabs.value.has(tab)) return;
+    if (WEB_TABS.some((t) => t.id === tab)) {
+      openedTabs.value = new Set([...openedTabs.value, tab]);
+    }
+  },
+  { immediate: true },
+);
 
 // when the page opens, refresh what may have gone stale while it was closed
 watch(

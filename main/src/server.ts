@@ -39,6 +39,11 @@ let networkMode = false;
 
 function isTrustedRequest(req: IncomingMessage) {
   if (process.env.VITE_DEV_SERVER_URL) return true; // dev server on another port
+  // Browsers say where a request comes from, even for a plain image or link
+  // (which carry no "Origin"): another web site must not make the app fetch
+  // pages through its proxy, read its files or follow its links.
+  const site = req.headers["sec-fetch-site"];
+  if (site === "cross-site" || site === "same-site") return false;
   const origin = req.headers.origin;
   if (networkMode) {
     // only the page served by this server itself

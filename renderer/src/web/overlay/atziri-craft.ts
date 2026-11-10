@@ -3,7 +3,7 @@
 // Shift + left click in the game while one of them is "armed", and their cost
 // in Divine Orbs from poe.ninja prices. Also a list of crafting bases (trade
 // links). Saved on this PC (localStorage), shared with the detached window.
-import { shallowRef, computed } from "vue";
+import { shallowRef, computed, watch } from "vue";
 import { Host } from "@/web/background/IPC";
 import { ITEM_BY_REF } from "@/assets/data";
 import { useLeagues } from "@/web/background/Leagues";
@@ -477,6 +477,14 @@ let started = false;
 export function initCraftCapture() {
   if (started) return;
   started = true;
+  // the main process forwards the game's Shift + clicks only while counting
+  watch(
+    () => armedEntry.value != null && !craft.value.paused,
+    (on) => {
+      fetch(`/atziri-craft/armed?on=${on ? 1 : 0}`, { method: "POST" }).catch(() => undefined);
+    },
+    { immediate: true },
+  );
   Host.onEvent("MAIN->CLIENT::widget-action", (e) => {
     if (e.target === "atziri-craft-click") {
       const s = craft.value;

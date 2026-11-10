@@ -83,6 +83,7 @@ import { computed, ref, shallowRef, nextTick } from "vue";
 import { tr, isFrench } from "@/web/atziri-lang";
 import { CRAFT_BASE_ICONS, TRADE_EXTRA_ICONS, baseIcon } from "./atziri-craft-icons";
 import { askConfirm } from "./atziri-confirm";
+import { isTradeUrl } from "./atziri-hub";
 
 interface TradeFav {
   id: number;
@@ -152,7 +153,7 @@ function startEdit(f: TradeFav) {
 function save() {
   const f = form.value;
   if (!f) return;
-  if (!/^https:\/\/[\w.-]*(pathofexile\.com|poe\.game\.qq\.com)\/trade2?\//.test(f.url)) {
+  if (!isTradeUrl(f.url)) {
     error.value = tr(
       "Colle un lien du site trade (pathofexile.com/trade2/…).",
       "Paste a link from the trade site (pathofexile.com/trade2/…).",
