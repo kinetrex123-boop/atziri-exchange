@@ -96,7 +96,26 @@ export function applyTheme(colors: ThemeColors) {
   }
 }
 
-export function setTheme(colors: ThemeColors) {
+// theme picked last ("braise", or the id of a saved theme); null after a manual color change
+const ACTIVE_KEY = "atziri-active-theme";
+export const activeTheme = shallowRef<string | null>(
+  (() => {
+    try {
+      return localStorage.getItem(ACTIVE_KEY);
+    } catch {
+      return null;
+    }
+  })(),
+);
+
+export function setTheme(colors: ThemeColors, id: string | null = null) {
+  activeTheme.value = id;
+  try {
+    if (id) localStorage.setItem(ACTIVE_KEY, id);
+    else localStorage.removeItem(ACTIVE_KEY);
+  } catch {
+    // ignore unavailable storage
+  }
   themeColors.value = { ...colors };
   applyTheme(themeColors.value);
   try {

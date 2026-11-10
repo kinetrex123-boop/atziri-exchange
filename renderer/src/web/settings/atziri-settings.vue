@@ -251,8 +251,8 @@
         :key="id"
         type="button"
         class="atz-preset"
-        :class="{ 'is-active': isPreset(preset.colors) }"
-        @click="setTheme(preset.colors)"
+        :class="{ 'is-active': isActiveTheme(String(id), preset.colors) }"
+        @click="setTheme(preset.colors, String(id))"
       >
         <span
           class="atz-dot"
@@ -281,7 +281,7 @@
         :key="ct.id"
         type="button"
         class="atz-preset atz-custom"
-        :class="{ 'is-active': isPreset(ct.colors) }"
+        :class="{ 'is-active': isActiveTheme(String(ct.id), ct.colors) }"
         @click="useCustomTheme(ct)"
       >
         <span class="atz-dot" :style="{ background: ct.colors.accent, borderColor: ct.colors.line }"></span>
@@ -362,7 +362,7 @@
         @click="setColor(selectedField, color)"
       ></button>
     </div>
-    <button type="button" class="btn mt-3" @click="setTheme(DEFAULT_THEME)">
+    <button type="button" class="btn mt-3" @click="setTheme(DEFAULT_THEME, 'braise')">
       {{ tr("Réinitialiser (Temple)", "Reset (Temple)") }}
     </button>
 
@@ -505,6 +505,7 @@ import {
   removeCustomTheme,
   themeNames,
   renameTheme,
+  activeTheme,
   type CustomTheme,
   type ThemeColors,
 } from "../atziri-theme";
@@ -664,7 +665,7 @@ function doRenameTheme() {
   renamingTheme.value = null;
 }
 function useCustomTheme(ct: CustomTheme) {
-  setTheme(ct.colors);
+  setTheme(ct.colors, String(ct.id));
   for (const slot of ["hub", "price"] as BgSlot[]) {
     const v = ct.backgrounds?.[slot];
     if (v) setBackground(slot, v);
@@ -740,6 +741,15 @@ function setColor(key: keyof ThemeColors, value: string) {
   setTheme({ ...themeColors.value, [key]: value });
 }
 
+/** the theme picked last; without one (older settings), the first theme with these colors */
+function isActiveTheme(id: string, colors: ThemeColors) {
+  if (!isPreset(colors)) return false;
+  if (activeTheme.value) return activeTheme.value === id;
+  const first =
+    Object.entries(THEME_PRESETS).find(([, p]) => isPreset(p.colors))?.[0] ??
+    customThemes.value.find((t) => isPreset(t.colors))?.id;
+  return String(first) === id;
+}
 function isPreset(colors: ThemeColors) {
   return (Object.keys(colors) as Array<keyof ThemeColors>).every(
     (k) => colors[k].toLowerCase() === themeColors.value[k].toLowerCase(),
