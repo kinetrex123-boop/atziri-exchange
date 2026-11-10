@@ -56,7 +56,7 @@
           <span class="fm-tip">
             <b>{{ tr("Suivi de craft", "Craft tracking") }}</b>
             <template v-if="isFr">
-              <br />1. Clique une case de la grille : la currency passe « en cours » et elle est <b>armée</b>.
+              <br />1. Clique une case de la grille : la currency passe « en cours », compte +1 et elle est <b>armée</b>.
               <br />2. En jeu, chaque <b>Shift + clic gauche</b> ajoute +1 à la currency armée.
               <br />3. <b>{{ pauseKey }}</b> met le compteur en pause (ou le relance).
               <br />4. Clic sur un nombre pour le taper, + et − pour le corriger.
@@ -152,7 +152,7 @@
             <span class="fm-cap">{{
               editing
                 ? tr("Modification des cases · clic sur une case pour choisir ce qu'elle contient", "Editing · click a cell to choose what it holds")
-                : tr("Mes currencies · clic sur une case : l'armer", "My currencies · click a cell: arm it")
+                : tr("Mes currencies · clic sur une case : +1 et l'armer", "My currencies · click a cell: +1 and arm it")
             }}</span>
             <span class="fm-sp"></span>
             <template v-if="editing">

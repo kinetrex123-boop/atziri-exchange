@@ -371,17 +371,24 @@ export function resetSlots() {
   });
 }
 
-/** clicking a grid cell: the item joins the session (if needed) and is armed */
+/** clicking a grid cell: the item joins the session (if needed), +1, and is armed */
 export function useSlotItem(key: string) {
   const [type, ...rest] = key.split("|");
   const ref = rest.join("|");
   const item = catalog.value.find((c) => c.key === key);
   update((s) => {
     const sess = cur(s);
-    if (!sess.entries.some((e) => e.key === key)) {
-      sess.entries.push({ key, type, ref, icon: item?.icon, count: 0, price: item?.divines ?? 0 });
+    let e = sess.entries.find((x) => x.key === key);
+    if (!e) {
+      e = { key, type, ref, icon: item?.icon, count: 0, price: item?.divines ?? 0 };
+      sess.entries.push(e);
     }
-    s.armedKey = s.armedKey === key ? null : key;
+    // each click on a cell counts one use, and arms the currency
+    e.count += 1;
+    const now = Date.now();
+    sess.firstAt ??= now;
+    sess.lastAt = now;
+    s.armedKey = key;
     s.paused = false;
   });
 }
