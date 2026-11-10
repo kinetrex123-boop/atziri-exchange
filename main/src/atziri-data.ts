@@ -31,7 +31,7 @@ const UPSTREAM_RELEASES =
 
 // Atziri Exchange's own version, raised with every release: "0.1", "0.2"...
 // GitHub release tag: "atziri-v0.1", "atziri-v0.2"...
-export const ATZIRI_VERSION = "0.2";
+export const ATZIRI_VERSION = "0.3";
 const ATZIRI_RELEASES =
   "https://api.github.com/repos/kinetrex123-boop/atziri-exchange/releases/latest";
 
