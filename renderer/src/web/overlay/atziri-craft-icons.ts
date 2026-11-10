@@ -55,6 +55,22 @@ export const CRAFT_BASE_ICONS: BaseIcon[] = [
   },
 ];
 
+/** extra icons for the Trade favourites */
+export const TRADE_EXTRA_ICONS: BaseIcon[] = [
+  {
+    id: "waystone",
+    fr: "Waystone",
+    en: "Waystone",
+    img: ART + "WzI1LDE0LHsiZiI6IjJESXRlbXMvTWFwcy9FbmRnYW1lTWFwcy9FbmRnYW1lTWFwMTUiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/36fdc2dffa/EndgameMap15.png",
+  },
+  {
+    id: "tablet",
+    fr: "Tablette",
+    en: "Tablet",
+    img: ART + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUHJlY3Vyc29yVGFibGV0cy9QcmVjdXJzb3JUYWJsZXRCcmVhY2giLCJ3IjoxLCJoIjoxLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/b45b6e660e/PrecursorTabletBreach.png",
+  },
+];
+
 // icons of the earlier versions, now grouped
 const OLD_IDS: Record<string, string> = {
   weapon: "onehand", magic: "onehand", mace: "onehand", sword: "onehand", axe: "onehand",
@@ -69,6 +85,7 @@ export function baseIcon(id: string | undefined): BaseIcon {
   const wanted = id && OLD_IDS[id] ? OLD_IDS[id] : id;
   return (
     CRAFT_BASE_ICONS.find((i) => i.id === wanted) ??
+    TRADE_EXTRA_ICONS.find((i) => i.id === wanted) ??
     CRAFT_BASE_ICONS.find((i) => i.id === "armour")!
   );
 }

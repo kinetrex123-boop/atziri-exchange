@@ -27,66 +27,28 @@
       </div>
       <ConverterBox class="ar-converter-pos" />
       <nav class="ar-tabs" role="tablist">
+        <!-- tabs in the player's order (drag a tab to move it) -->
         <button
+          v-for="tb in orderedTabs"
+          :key="tb.id"
           type="button"
           role="tab"
-          :aria-selected="hubTab === 'market'"
-          @click="hubTab = 'market'"
+          draggable="true"
+          :class="{ 'ar-tab-drop': tabDrop === tb.id }"
+          :aria-selected="hubTab === tb.id"
+          @click="hubTab = tb.id"
+          @dragstart="onTabDragStart(tb.id, $event)"
+          @dragover.prevent="tabDrop = tb.id"
+          @dragleave="tabDrop = tabDrop === tb.id ? null : tabDrop"
+          @drop.prevent="onTabDrop(tb.id)"
+          @dragend="tabDrop = null"
         >
-          <i class="fas fa-coins ar-tabfa"></i>Economy
-          <span v-if="alertCount" class="ar-badge" :title="tr('Alertes de prix', 'Price alerts')">{{
-            alertCount
-          }}</span>
-        </button>
-        <template v-for="tab in WEB_TABS.filter((t) => t.id !== 'ninja')" :key="tab.id">
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="hubTab === tab.id"
-            @click="hubTab = tab.id"
-          >
-            <i class="fas ar-tabfa" :class="tab.icon"></i>{{ tab.label }}
-          </button>
-          <!-- craft cost tracking, right after the Craft of Exile page -->
-          <button
-            v-if="tab.id === 'craft'"
-            type="button"
-            role="tab"
-            :aria-selected="hubTab === 'crafttrack'"
-            @click="hubTab = 'crafttrack'"
-          >
-            <i class="fas fa-flask ar-tabfa"></i>{{ tr("Suivi craft", "Craft tracking") }}
-          </button>
-        </template>
-        <!-- Farm journal (replaces the Atziri Regex tab for now: RegexPane.vue
-             is kept, put the tab back here to restore it) -->
-        <button
-          type="button"
-          role="tab"
-          :aria-selected="hubTab === 'farm'"
-          @click="hubTab = 'farm'"
-        >
-          <i class="fas fa-map ar-tabfa"></i>Farm
-        </button>
-        <!-- Path of Building build -->
-        <button
-          type="button"
-          role="tab"
-          :aria-selected="hubTab === 'stats'"
-          @click="hubTab = 'stats'"
-        >
-          <i class="fas fa-chart-bar ar-tabfa"></i>Stats
-        </button>
-        <!-- poe.ninja right after Stats (builds and economy) -->
-        <button
-          v-for="tab in WEB_TABS.filter((t) => t.id === 'ninja')"
-          :key="tab.id"
-          type="button"
-          role="tab"
-          :aria-selected="hubTab === tab.id"
-          @click="hubTab = tab.id"
-        >
-          <i class="fas ar-tabfa" :class="tab.icon"></i>{{ tab.label }}
+          <i class="fas ar-tabfa" :class="tb.icon"></i>{{ tb.label }}
+          <span
+            v-if="tb.id === 'market' && alertCount"
+            class="ar-badge"
+            :title="tr('Alertes de prix', 'Price alerts')"
+          >{{ alertCount }}</span>
         </button>
         <!-- Historique: icon only, far right -->
         <button
@@ -321,7 +283,7 @@ import {
 import { AppConfig } from "@/web/Config";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
 import type { WidgetManager } from "./interfaces";
-import { hubTab, WEB_TABS, openInHub, isDetachedHub } from "./atziri-hub";
+import { hubTab, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
@@ -502,6 +464,66 @@ watch(
     else fetchLive(selectedType.value);
   },
 );
+
+// ---- tabs, in the order chosen by the player ----
+type HubTabEntry = { id: HubTab; icon: string; label: string };
+const allTabs = computed<HubTabEntry[]>(() => {
+  const web = (id: string) => {
+    const t = WEB_TABS.find((w) => w.id === id)!;
+    return { id: t.id, icon: t.icon, label: t.label } as HubTabEntry;
+  };
+  return [
+    { id: "market", icon: "fa-coins", label: "Economy" },
+    web("poedb"),
+    web("craft"),
+    { id: "crafttrack", icon: "fa-flask", label: tr("Suivi craft", "Craft tracking") },
+    web("trade"),
+    web("regexeng"),
+    { id: "farm", icon: "fa-map", label: "Farm" },
+    { id: "stats", icon: "fa-chart-bar", label: "Stats" },
+    web("ninja"),
+  ];
+});
+const TAB_ORDER_KEY = "atziri-tab-order";
+function loadTabOrder(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(TAB_ORDER_KEY) ?? "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+const tabOrder = shallowRef<string[]>(loadTabOrder());
+window.addEventListener("storage", (e) => {
+  if (e.key === TAB_ORDER_KEY) tabOrder.value = loadTabOrder();
+});
+const orderedTabs = computed(() => {
+  const rank = (id: string) => {
+    const i = tabOrder.value.indexOf(id);
+    return i === -1 ? 1000 + allTabs.value.findIndex((t) => t.id === id) : i;
+  };
+  return [...allTabs.value].sort((a, b) => rank(a.id) - rank(b.id));
+});
+const tabDrop = shallowRef<string | null>(null);
+let tabDragged: string | null = null;
+function onTabDragStart(id: string, e: DragEvent) {
+  tabDragged = id;
+  e.dataTransfer?.setData("text/plain", id);
+}
+function onTabDrop(target: string) {
+  tabDrop.value = null;
+  const from = tabDragged;
+  tabDragged = null;
+  if (!from || from === target) return;
+  const ids = orderedTabs.value.map((t) => t.id as string).filter((id) => id !== from);
+  ids.splice(ids.indexOf(target), 0, from);
+  tabOrder.value = ids;
+  try {
+    localStorage.setItem(TAB_ORDER_KEY, JSON.stringify(ids));
+  } catch {
+    // storage unavailable
+  }
+}
 
 // Hub title follows the active tab
 const activeTabLabel = computed(() => {
@@ -1318,6 +1340,9 @@ const rows = computed(() => {
   }
 }
 
+.ar-hub .ar-tabs .ar-tab-drop {
+  box-shadow: inset 3px 0 var(--accent);
+}
 .ar-hub .ar-tabs .ar-tab-icononly {
   margin-left: auto;
   padding: 8px 14px;

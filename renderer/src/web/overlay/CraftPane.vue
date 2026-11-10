@@ -33,10 +33,16 @@
         <span class="fm-sp"></span>
         <span class="fm-cap">{{ tr("Comptage des clics", "Click counting") }}</span>
         <span class="cr-state" :class="counterState" :title="stateTitle"><i class="fas fa-circle"></i></span>
-        <button v-if="armed" type="button" class="fm-btn" @click="setPaused(!craft.paused)">
+        <span class="fm-muted fm-mono">{{ tr("Shift + clic gauche", "Shift + left click") }}</span>
+        <button
+          v-if="armed"
+          type="button"
+          class="fm-btn"
+          :title="tr(`Raccourci : ${pauseKey}`, `Hotkey: ${pauseKey}`)"
+          @click="setPaused(!craft.paused)"
+        >
           <i :class="craft.paused ? 'fas fa-play' : 'fas fa-pause'"></i>
           {{ craft.paused ? tr("Reprendre", "Resume") : tr("Pause", "Pause") }}
-          <span class="fm-muted fm-mono">{{ pauseKey }}</span>
         </button>
         <span class="fm-help" tabindex="0">
           ?
@@ -101,7 +107,7 @@
             <span v-else class="cr-ico cr-noico"></span>
             <div class="cr-n">
               <b>{{ entryName(e) }}</b>
-              <span>{{ unitText(e.price) }} · {{ tr("total", "total") }} {{ num(e.count * e.price) }} div</span>
+              <span>{{ unitText(e.price) }} · {{ tr("total", "total") }} {{ unitText(e.count * e.price) }}</span>
             </div>
             <input
               v-if="editingCount === e.key"
@@ -342,6 +348,7 @@ import {
   catalogLoading,
   loadCatalog,
   CRAFT_TYPES,
+  CRAFT_TYPE_LABELS,
   GRID_BLOCKS,
   slotKey,
   setSlot,
@@ -377,12 +384,13 @@ const stateTitle = computed(() =>
 function num(n: number) {
   return (Math.round(n * 100) / 100).toLocaleString(isFr.value ? "fr-FR" : "en-GB");
 }
-/** price of one: Exalted Orbs under 1 Divine, else Divine Orbs */
+/** an amount: Exalted Orbs up to 100, then Chaos Orbs up to 30, then Divine Orbs */
 function unitText(divines: number) {
-  const exa = rates.value.exalted;
-  if (divines >= 1 || !exa) return `${num(divines)} div`;
-  const e = divines * exa;
-  return `${e >= 10 ? Math.round(e) : num(e)} ex`;
+  const { exalted: exa, chaos } = rates.value;
+  const short = (n: number) => (n >= 10 ? Math.round(n).toLocaleString(isFr.value ? "fr-FR" : "en-GB") : num(n));
+  if (exa && divines * exa <= 100) return `${short(divines * exa)} ex`;
+  if (chaos && divines * chaos <= 30) return `${short(divines * chaos)} chaos`;
+  return `${num(divines)} div`;
 }
 
 // clock for "updated N min ago"
@@ -540,11 +548,8 @@ function chooseForCell(key: string | null) {
   pickCell.value = null;
 }
 function typeLabel(ty: string) {
-  if (ty === "Ritual") return tr("Présages", "Omens");
-  if (ty === "Verisium") return tr("Alliages", "Alloys");
-  if (ty === "Runes") return "Runes";
-  if (ty === "Essences") return "Essences";
-  return "Currency";
+  const l = CRAFT_TYPE_LABELS[ty];
+  return l ? tr(l[0], l[1]) : ty;
 }
 function plain(s: string) {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -554,7 +559,8 @@ const pickList = computed(() => {
   return catalog.value
     .filter((it) => it.type === pickType.value)
     .filter((it) => !q || plain(entryName(it)).includes(q) || plain(it.ref).includes(q))
-    .slice(0, 120);
+    .sort((a, b) => b.divines - a.divines)
+    .slice(0, 150);
 });
 
 // ---- crafting bases ----
@@ -881,6 +887,7 @@ function confirmRemoveBase(id: number, name: string) {
 .cr-ptabs {
   display: flex;
   gap: 2px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--line);
 }
 .fm-wrap .cr-ptabs button {

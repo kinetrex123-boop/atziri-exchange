@@ -24,6 +24,18 @@
       <button
         type="button"
         class="ar-quick"
+        :title="tr('Copier l’adresse de la page', 'Copy the page address')"
+        @click="copyUrl"
+      >
+        <i :class="copied ? 'fas fa-check' : 'far fa-copy'"></i>
+        {{ copied ? tr("Copié !", "Copied!") : tr("Copier l'URL", "Copy URL") }}
+      </button>
+      <!-- Trade: favourite searches instead of "open in my browser" -->
+      <TradeFavorites v-if="tab.id === 'trade'" :current-url="addressInput" @go="load" />
+      <button
+        v-else
+        type="button"
+        class="ar-quick"
         :title="tr('Ouvrir cette page dans ton navigateur habituel', 'Open this page in your usual browser')"
         @click="openExternal"
       >
@@ -45,6 +57,7 @@
 <script setup lang="ts">
 import { shallowRef, watch, type PropType } from "vue";
 import { tr } from "@/web/atziri-lang";
+import TradeFavorites from "./TradeFavorites.vue";
 import {
   type WebTab,
   webTabUrls,
@@ -150,14 +163,30 @@ function webviewDo(method: "goBack" | "goForward" | "reload") {
   }
 }
 
-// window.open is turned into "open in the default browser" by the main process
-function openExternal() {
+function currentUrl() {
   let url = addressInput.value;
   try {
     url = webviewEl.value?.getURL?.() || url;
   } catch {
     // keep the address bar value
   }
+  return url;
+}
+
+const copied = shallowRef(false);
+async function copyUrl() {
+  try {
+    await navigator.clipboard.writeText(currentUrl());
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1500);
+  } catch {
+    // clipboard unavailable
+  }
+}
+
+// window.open is turned into "open in the default browser" by the main process
+function openExternal() {
+  const url = currentUrl();
   if (/^https?:\/\//i.test(url)) window.open(url);
 }
 </script>

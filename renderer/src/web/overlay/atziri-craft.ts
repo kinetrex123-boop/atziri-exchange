@@ -281,8 +281,29 @@ export interface CatalogItem {
   divines: number;
 }
 
-/** poe.ninja categories offered in the list (Ritual = omens, Verisium = alloys) */
-export const CRAFT_TYPES = ["Currency", "Essences", "Ritual", "Verisium", "Runes"] as const;
+/** poe.ninja categories offered in the list, as in the Economy tab
+ * (Ritual = omens, Verisium = alloys, Ultimatum = soul cores) */
+export const CRAFT_TYPES = [
+  "Currency", "Essences", "Ritual", "Breach", "Abyss",
+  "Verisium", "Runes", "Delirium", "Ultimatum",
+] as const;
+// categories poe.ninja renamed
+const TYPE_ALIASES: Record<string, string[]> = {
+  Ultimatum: ["SoulCores"],
+  Ritual: ["Omens"],
+  Delirium: ["Distilled", "DistilledEmotions"],
+};
+export const CRAFT_TYPE_LABELS: Record<string, [string, string]> = {
+  Currency: ["Objets monétaires", "Currency"],
+  Essences: ["Essences", "Essences"],
+  Ritual: ["Présages", "Omens"],
+  Breach: ["Brèche", "Breach"],
+  Abyss: ["Abysse", "Abyss"],
+  Verisium: ["Vérisium", "Verisium"],
+  Runes: ["Runes", "Runes"],
+  Delirium: ["Délire", "Delirium"],
+  Ultimatum: ["Noyaux d'âme", "Soul cores"],
+};
 
 // ---- grid laid out like the game's Currency stash tab ----
 export interface GridCell {
@@ -369,11 +390,16 @@ export async function loadCatalog(force = false) {
     let exalted: number | undefined;
     let chaos: number | undefined;
     const fetchType = async (type: string) => {
-      const query = `league=${encodeURIComponent(league).replace(/%20/g, "+")}&type=${type}`;
-      const res = await Host.proxy(
-        `poe.ninja/poe2/api/economy/exchange/current/overview?${query}`,
-      );
-      return res.ok ? { type, data: await res.json() } : null;
+      for (const apiType of [type, ...(TYPE_ALIASES[type] ?? [])]) {
+        const query = `league=${encodeURIComponent(league).replace(/%20/g, "+")}&type=${apiType}`;
+        const res = await Host.proxy(
+          `poe.ninja/poe2/api/economy/exchange/current/overview?${query}`,
+        );
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data?.lines?.length) return { type, data };
+      }
+      return null;
     };
     const results = await Promise.all(
       CRAFT_TYPES.map((t) => fetchType(t).catch(() => null)),
