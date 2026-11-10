@@ -41,7 +41,9 @@ Un grand cadre redimensionnable. Ses onglets se rangent dans l'ordre que tu veux
 L'objet survolé est comparé à ton équipement par le moteur de Path of Building. Tu vois l'effet sur le DPS de chaque compétence, le critique, la vitesse, les défenses et les résistances, ainsi que les mods de l'objet face à l'objet équipé. Il faut avoir Path of Building (PoE2) installé.
 
 ### Confort
-- Paramètres regroupés dans « Atziri réglage » : ligue, raccourcis, 4 thèmes et 6 couleurs, images de fond.
+- Paramètres regroupés dans « Atziri réglage » : ligue, raccourcis, thèmes (Temple, Rituel, Violet, et les tiens à enregistrer et renommer), 6 couleurs, images de fond (tes images importées restent dans la liste).
+- Nom et icône de l'overlay au choix (icône près de l'horloge, fenêtre détachée, logo de Shift + Espace).
+- Les onglets web ne se chargent qu'à leur première ouverture, pour garder l'overlay léger.
 - Option « Lancer avec le jeu ». Sinon, l'overlay se ferme tout seul 5 s après le jeu.
 - Toute l'interface ajoutée suit la langue choisie (français ou anglais).
 - Les listes d'objets et de mods se mettent à jour toutes seules depuis GitHub.
