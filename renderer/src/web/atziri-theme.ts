@@ -15,24 +15,12 @@ export interface ThemeColors {
 // Skins of the Atziri Regex page
 export const THEME_PRESETS: Record<string, { label: string; colors: ThemeColors }> = {
   braise: {
-    label: "Braise",
+    label: "Temple",
     colors: { bg: "#0e0c0a", surface: "#1f1914", line: "#3b3025", fg: "#ebdfc6", muted: "#a8977b", accent: "#d8a24f" },
   },
-  vaal: {
-    label: "Vaal",
-    colors: { bg: "#0a1110", surface: "#121c1b", line: "#264039", fg: "#dde9e3", muted: "#8ea79f", accent: "#56c9a6" },
-  },
   sang: {
-    label: "Sang",
+    label: "Rituel",
     colors: { bg: "#110909", surface: "#1c1012", line: "#45232a", fg: "#f1e3df", muted: "#b49a96", accent: "#d24b40" },
-  },
-  delire: {
-    label: "Délire",
-    colors: { bg: "#0f0f13", surface: "#18181f", line: "#34333f", fg: "#e6e4ee", muted: "#9a97ab", accent: "#c3b8e8" },
-  },
-  noir: {
-    label: "Noir et blanc",
-    colors: { bg: "#0b0b0b", surface: "#171717", line: "#3a3a3a", fg: "#ededed", muted: "#9c9c9c", accent: "#d9d9d9" },
   },
   violet: {
     label: "Violet",
@@ -120,4 +108,39 @@ export function setTheme(colors: ThemeColors) {
 
 export function initTheme() {
   applyTheme(themeColors.value);
+}
+
+// ---- themes saved by the player (colors and background images) ----
+export interface CustomTheme {
+  id: number;
+  name: string;
+  colors: ThemeColors;
+  backgrounds?: Record<string, string>;
+}
+const CUSTOM_KEY = "atziri-custom-themes";
+function loadCustom(): CustomTheme[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(CUSTOM_KEY) ?? "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+export const customThemes = shallowRef<CustomTheme[]>(loadCustom());
+function saveCustom(list: CustomTheme[]) {
+  customThemes.value = list;
+  try {
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(list));
+  } catch {
+    // ignore unavailable storage
+  }
+}
+export function addCustomTheme(name: string, backgrounds?: Record<string, string>) {
+  saveCustom([
+    ...customThemes.value,
+    { id: Date.now(), name: name.trim().slice(0, 30), colors: { ...themeColors.value }, backgrounds },
+  ]);
+}
+export function removeCustomTheme(id: number) {
+  saveCustom(customThemes.value.filter((t) => t.id !== id));
 }

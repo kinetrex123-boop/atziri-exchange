@@ -260,6 +260,39 @@
         ></span>
         {{ tr(preset.label, THEME_NAMES_EN[id] ?? preset.label) }}
       </button>
+      <!-- themes saved by the player -->
+      <button
+        v-for="ct in customThemes"
+        :key="ct.id"
+        type="button"
+        class="atz-preset atz-custom"
+        :class="{ 'is-active': isPreset(ct.colors) }"
+        @click="useCustomTheme(ct)"
+      >
+        <span class="atz-dot" :style="{ background: ct.colors.accent, borderColor: ct.colors.line }"></span>
+        {{ ct.name }}
+        <i
+          class="atz-custom-x fas fa-times"
+          :title="tr('Supprimer ce thème', 'Delete this theme')"
+          @click.stop="removeCustomTheme(ct.id)"
+        ></i>
+      </button>
+      <template v-if="savingTheme">
+        <input
+          ref="themeNameEl"
+          v-model="themeName"
+          maxlength="30"
+          class="rounded bg-gray-900 px-2 py-1 w-full"
+          :placeholder="tr('Nom du thème', 'Theme name')"
+          @keydown.enter="saveTheme"
+          @keydown.esc="savingTheme = false"
+        />
+        <button type="button" class="btn" @click="saveTheme">OK</button>
+        <button type="button" class="btn" @click="savingTheme = false">{{ tr("Annuler", "Cancel") }}</button>
+      </template>
+      <button v-else type="button" class="atz-preset" @click="startSaveTheme">
+        <i class="fas fa-plus"></i> {{ tr("Enregistrer mon réglage", "Save my settings") }}
+      </button>
     </div>
     <div class="atz-palette-sub">{{ tr("Personnaliser", "Customize") }}</div>
     <div
@@ -300,7 +333,7 @@
       ></button>
     </div>
     <button type="button" class="btn mt-3" @click="setTheme(DEFAULT_THEME)">
-      {{ tr("Réinitialiser (Braise)", "Reset (Ember)") }}
+      {{ tr("Réinitialiser (Temple)", "Reset (Temple)") }}
     </button>
 
     <!-- Background images -->
@@ -437,6 +470,10 @@ import {
   DEFAULT_THEME,
   themeColors,
   setTheme,
+  customThemes,
+  addCustomTheme,
+  removeCustomTheme,
+  type CustomTheme,
   type ThemeColors,
 } from "../atziri-theme";
 import {
@@ -464,11 +501,8 @@ const COLOR_FIELDS: Array<{ key: keyof ThemeColors; label: string; labelEn: stri
   { key: "muted", label: "Texte secondaire", labelEn: "Secondary text" },
 ];
 const THEME_NAMES_EN: Record<string, string> = {
-  braise: "Ember",
-  vaal: "Vaal",
-  sang: "Blood",
-  delire: "Delirium",
-  noir: "Black & white",
+  braise: "Temple",
+  sang: "Ritual",
   violet: "Purple",
 };
 const BG_NAMES_EN: Record<string, string> = {
@@ -571,6 +605,28 @@ const BG_SLOTS: Array<{ id: BgSlot; label: string; labelEn: string }> = [
   { id: "hub", label: "Shift + Espace", labelEn: "Shift + Space" },
   { id: "price", label: "Vérification du prix", labelEn: "Price check" },
 ];
+
+// Themes saved by the player: colors and background images
+const savingTheme = shallowRef(false);
+const themeName = shallowRef("");
+const themeNameEl = shallowRef<HTMLInputElement | null>(null);
+function startSaveTheme() {
+  themeName.value = `${tr("Mon thème", "My theme")} ${customThemes.value.length + 1}`;
+  savingTheme.value = true;
+  setTimeout(() => themeNameEl.value?.select(), 0);
+}
+function saveTheme() {
+  if (!themeName.value.trim()) return;
+  addCustomTheme(themeName.value, { ...backgrounds.value });
+  savingTheme.value = false;
+}
+function useCustomTheme(ct: CustomTheme) {
+  setTheme(ct.colors);
+  for (const slot of ["hub", "price"] as BgSlot[]) {
+    const v = ct.backgrounds?.[slot];
+    if (v) setBackground(slot, v);
+  }
+}
 
 // Name and icon of the overlay
 const brandName = shallowRef(brand.value.name);
@@ -763,6 +819,19 @@ const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
     border-color: theme("colors.blue.400");
     box-shadow: 0 0 0 1px theme("colors.blue.400");
   }
+}
+
+.atz-custom {
+  position: relative;
+}
+.atz-custom-x {
+  margin-left: 4px;
+  font-size: 9px;
+  opacity: 0.5;
+}
+.atz-custom-x:hover {
+  opacity: 1;
+  color: #d9584a;
 }
 
 .atz-bg-x {
