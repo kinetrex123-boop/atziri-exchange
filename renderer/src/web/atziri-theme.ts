@@ -144,3 +144,31 @@ export function addCustomTheme(name: string, backgrounds?: Record<string, string
 export function removeCustomTheme(id: number) {
   saveCustom(customThemes.value.filter((t) => t.id !== id));
 }
+
+// ---- names given by the player to the themes ----
+const NAMES_KEY = "atziri-theme-names";
+function loadNames(): Record<string, string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(NAMES_KEY) ?? "{}");
+    return v && typeof v === "object" ? v : {};
+  } catch {
+    return {};
+  }
+}
+/** built-in theme id -> name chosen by the player */
+export const themeNames = shallowRef<Record<string, string>>(loadNames());
+export function renameTheme(id: string, name: string) {
+  const n = name.trim().slice(0, 30);
+  if (/^d+$/.test(id)) {
+    saveCustom(customThemes.value.map((t) => (String(t.id) === id && n ? { ...t, name: n } : t)));
+    return;
+  }
+  const next = Object.fromEntries(Object.entries(themeNames.value).filter(([k]) => k !== id));
+  if (n) next[id] = n;
+  themeNames.value = next;
+  try {
+    localStorage.setItem(NAMES_KEY, JSON.stringify(next));
+  } catch {
+    // ignore unavailable storage
+  }
+}

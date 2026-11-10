@@ -258,7 +258,22 @@
           class="atz-dot"
           :style="{ background: preset.colors.accent, borderColor: preset.colors.line }"
         ></span>
-        {{ tr(preset.label, THEME_NAMES_EN[id] ?? preset.label) }}
+        <input
+          v-if="renamingTheme === String(id)"
+          v-model="renameText"
+          class="atz-rename"
+          maxlength="30"
+          @click.stop
+          @keydown.enter="doRenameTheme"
+          @keydown.esc="renamingTheme = null"
+          @blur="doRenameTheme"
+        />
+        <template v-else>{{ themeNames[id] ?? tr(preset.label, THEME_NAMES_EN[id] ?? preset.label) }}</template>
+        <i
+          class="atz-custom-x fas fa-pen"
+          :title="tr('Renommer', 'Rename')"
+          @click.stop="startRenameTheme(String(id), themeNames[id] ?? tr(preset.label, THEME_NAMES_EN[id] ?? preset.label))"
+        ></i>
       </button>
       <!-- themes saved by the player -->
       <button
@@ -270,7 +285,22 @@
         @click="useCustomTheme(ct)"
       >
         <span class="atz-dot" :style="{ background: ct.colors.accent, borderColor: ct.colors.line }"></span>
-        {{ ct.name }}
+        <input
+          v-if="renamingTheme === String(ct.id)"
+          v-model="renameText"
+          class="atz-rename"
+          maxlength="30"
+          @click.stop
+          @keydown.enter="doRenameTheme"
+          @keydown.esc="renamingTheme = null"
+          @blur="doRenameTheme"
+        />
+        <template v-else>{{ ct.name }}</template>
+        <i
+          class="atz-custom-x fas fa-pen"
+          :title="tr('Renommer', 'Rename')"
+          @click.stop="startRenameTheme(String(ct.id), ct.name)"
+        ></i>
         <i
           class="atz-custom-x fas fa-times"
           :title="tr('Supprimer ce thème', 'Delete this theme')"
@@ -473,6 +503,8 @@ import {
   customThemes,
   addCustomTheme,
   removeCustomTheme,
+  themeNames,
+  renameTheme,
   type CustomTheme,
   type ThemeColors,
 } from "../atziri-theme";
@@ -619,6 +651,17 @@ function saveTheme() {
   if (!themeName.value.trim()) return;
   addCustomTheme(themeName.value, { ...backgrounds.value });
   savingTheme.value = false;
+}
+const renamingTheme = shallowRef<string | null>(null);
+const renameText = shallowRef("");
+function startRenameTheme(id: string, name: string) {
+  renamingTheme.value = id;
+  renameText.value = name;
+}
+function doRenameTheme() {
+  if (renamingTheme.value == null) return;
+  renameTheme(renamingTheme.value, renameText.value);
+  renamingTheme.value = null;
 }
 function useCustomTheme(ct: CustomTheme) {
   setTheme(ct.colors);
@@ -823,6 +866,13 @@ const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
 
 .atz-custom {
   position: relative;
+}
+.atz-rename {
+  width: 7rem;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: theme("colors.gray.900");
+  color: theme("colors.gray.100");
 }
 .atz-custom-x {
   margin-left: 4px;
