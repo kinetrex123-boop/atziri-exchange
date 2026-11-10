@@ -9,7 +9,9 @@
           :value="sess.id"
           @change="selectCraftSession(Number(($event.target as HTMLSelectElement).value))"
         >
-          <option v-for="s in craft.sessions" :key="s.id" :value="s.id">{{ s.title }}</option>
+          <option v-for="s in craft.sessions" :key="s.id" :value="s.id">
+            {{ s.title }}{{ s.finishedAt ? tr(" (terminée)", " (finished)") : "" }}
+          </option>
         </select>
         <button type="button" class="fm-btn" @click="newSessionPrompt">+ {{ tr("Session", "Session") }}</button>
         <template v-if="renaming">
@@ -24,8 +26,13 @@
         <button v-else type="button" class="fm-btn" @click="startRename">
           <i class="fas fa-pen"></i> {{ tr("Renommer", "Rename") }}
         </button>
-        <button type="button" class="fm-btn" :title="tr('Remettre les compteurs à 0', 'Reset the counters')" @click="confirmReset">
-          <i class="fas fa-undo"></i> {{ tr("Remettre à 0", "Reset") }}
+        <button
+          type="button"
+          class="fm-btn"
+          :title="tr('Terminer cette session (elle reste enregistrée) et en commencer une nouvelle', 'Finish this session (it stays saved) and start a new one')"
+          @click="confirmFinish"
+        >
+          <i class="fas fa-flag-checkered"></i> {{ tr("Terminer", "Finish") }}
         </button>
         <button type="button" class="fm-btn fm-danger" :title="tr('Supprimer cette session', 'Delete this session')" @click="confirmDelete">
           <i class="fas fa-trash"></i>
@@ -323,6 +330,7 @@ import type { ItemCheckWidget } from "@/web/item-check/widget";
 import { hubTab, openInHub } from "./atziri-hub";
 import { rates } from "./atziri-money";
 import { CRAFT_BASE_ICONS, baseIcon } from "./atziri-craft-icons";
+import { askConfirm } from "./atziri-confirm";
 import {
   craft,
   craftSession as sess,
@@ -334,7 +342,7 @@ import {
   addCraftSession,
   renameCraftSession,
   deleteCraftSession,
-  resetCraftSession,
+  finishCraftSession,
   removeEntry,
   changeCount,
   setCount,
@@ -438,14 +446,21 @@ function doRename() {
   renameCraftSession(renameText.value);
   renaming.value = false;
 }
-function confirmReset() {
-  if (window.confirm(tr("Remettre tous les compteurs de cette session à 0 ?", "Reset all the counters of this session?"))) {
-    resetCraftSession();
+async function confirmFinish() {
+  if (
+    await askConfirm(
+      tr(
+        `Terminer « ${sess.value.title} » ? Elle reste enregistrée dans la liste des sessions, et une nouvelle session vide commence.`,
+        `Finish "${sess.value.title}"? It stays saved in the session list, and a new empty session starts.`,
+      ),
+    )
+  ) {
+    finishCraftSession(`Craft ${craft.value.sessions.length + 1}`);
   }
 }
-function confirmDelete() {
+async function confirmDelete() {
   if (
-    window.confirm(
+    await askConfirm(
       tr(`Supprimer la session « ${sess.value.title} » ?`, `Delete the session "${sess.value.title}"?`),
     )
   ) {
@@ -537,8 +552,8 @@ function stopEditing() {
   editing.value = false;
   pickCell.value = null;
 }
-function confirmResetSlots() {
-  if (window.confirm(tr("Remettre toutes les cases par défaut ?", "Put every cell back to the default?"))) {
+async function confirmResetSlots() {
+  if (await askConfirm(tr("Remettre toutes les cases par défaut ?", "Put every cell back to the default?"))) {
     resetSlots();
   }
 }
@@ -591,8 +606,8 @@ function saveBase() {
   else addBase(f.url, name, f.icon);
   baseForm.value = null;
 }
-function confirmRemoveBase(id: number, name: string) {
-  if (window.confirm(tr(`Supprimer « ${name} » ?`, `Delete "${name}"?`))) removeBase(id);
+async function confirmRemoveBase(id: number, name: string) {
+  if (await askConfirm(tr(`Supprimer « ${name} » ?`, `Delete "${name}"?`))) removeBase(id);
 }
 </script>
 

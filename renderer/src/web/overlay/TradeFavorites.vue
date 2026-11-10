@@ -82,6 +82,7 @@
 import { computed, ref, shallowRef, nextTick } from "vue";
 import { tr, isFrench } from "@/web/atziri-lang";
 import { CRAFT_BASE_ICONS, TRADE_EXTRA_ICONS, baseIcon } from "./atziri-craft-icons";
+import { askConfirm } from "./atziri-confirm";
 
 interface TradeFav {
   id: number;
@@ -166,8 +167,8 @@ function save() {
   }
   form.value = null;
 }
-function remove(f: TradeFav) {
-  if (window.confirm(tr(`Supprimer « ${f.name} » ?`, `Delete "${f.name}"?`))) {
+async function remove(f: TradeFav) {
+  if (await askConfirm(tr(`Supprimer « ${f.name} » ?`, `Delete "${f.name}"?`))) {
     save_(favs.value.filter((x) => x.id !== f.id));
   }
 }

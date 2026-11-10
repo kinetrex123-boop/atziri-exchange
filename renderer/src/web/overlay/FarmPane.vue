@@ -247,6 +247,7 @@
 </template>
 
 <script setup lang="ts">
+import { askConfirm } from "./atziri-confirm";
 import { computed, shallowRef, onMounted, onUnmounted } from "vue";
 import { tr, isFrench } from "@/web/atziri-lang";
 import { AppConfig } from "@/web/Config";
@@ -377,9 +378,9 @@ function doRename() {
   renameSession(renameText.value);
   renaming.value = false;
 }
-function confirmDelete() {
+async function confirmDelete() {
   if (
-    window.confirm(
+    await askConfirm(
       tr(
         `Supprimer la session « ${sess.value.title} » ?`,
         `Delete the session "${sess.value.title}"?`,

@@ -24,6 +24,7 @@ export interface CraftSession {
   entries: CraftEntry[];
   firstAt: number | null; // first counted use
   lastAt: number | null; // last counted use
+  finishedAt?: number; // session closed with "Terminer"
 }
 
 export interface CraftBase {
@@ -152,8 +153,6 @@ export function selectCraftSession(id: number) {
 export function addCraftSession(title: string) {
   update((s) => {
     const sess = newSession(title || `Craft ${s.sessions.length + 1}`);
-    // same currencies as the session in use, counters at 0
-    sess.entries = cur(s).entries.map((e) => ({ ...e, count: 0 }));
     s.sessions.unshift(sess);
     s.currentId = sess.id;
     s.armedKey = null;
@@ -172,6 +171,19 @@ export function deleteCraftSession() {
     if (!s.sessions.length) s.sessions.push(newSession("Craft 1"));
     s.currentId = s.sessions[0].id;
     s.armedKey = null;
+  });
+}
+
+/** closes the session in use (kept in the list) and starts an empty one */
+export function finishCraftSession(title: string) {
+  update((s) => {
+    const done = cur(s);
+    if (done.entries.length) done.finishedAt = Date.now();
+    const sess = newSession(title);
+    s.sessions.unshift(sess);
+    s.currentId = sess.id;
+    s.armedKey = null;
+    s.paused = false;
   });
 }
 

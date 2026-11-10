@@ -268,6 +268,7 @@
         </div>
       </section>
     </div>
+    <ConfirmBox />
   </div>
 </template>
 
@@ -289,6 +290,7 @@ import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
 import StatsPane from "./StatsPane.vue";
 import CraftPane from "./CraftPane.vue";
+import ConfirmBox from "./ConfirmBox.vue";
 import HistoryPane from "./HistoryPane.vue";
 import ConverterBox from "./ConverterBox.vue";
 import { setRates } from "./atziri-money";
