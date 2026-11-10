@@ -66,7 +66,7 @@
 
     <!-- New Atziri Exchange installer published on GitHub -->
     <a
-      v-if="atziriUpdate"
+      v-if="atziriUpdate && atziriUpdate.build > updateDismissed"
       class="ar-update"
       :href="atziriUpdate.url"
       target="_blank"
@@ -79,6 +79,14 @@
           "A new Atziri Exchange version is available: click to download it.",
         )
       }}
+      <button
+        type="button"
+        class="ar-update-x"
+        :title="tr('Masquer jusqu’à la prochaine version', 'Hide until the next version')"
+        @click.prevent.stop="dismissUpdate"
+      >
+        ✕
+      </button>
     </a>
 
     <!-- One web page per tab, kept alive (v-show) so each keeps its state -->
@@ -662,6 +670,18 @@ async function fetchLiveType(
 
 // --- New Atziri Exchange version (checked by the main process) ---
 const atziriUpdate = shallowRef<{ build: number; url: string } | null>(null);
+// "✕" on the notice: hidden until an even newer version is published
+const UPDATE_DISMISS_KEY = "atziri-update-dismissed";
+const updateDismissed = shallowRef(Number(localStorage.getItem(UPDATE_DISMISS_KEY) ?? 0) || 0);
+function dismissUpdate() {
+  if (!atziriUpdate.value) return;
+  updateDismissed.value = atziriUpdate.value.build;
+  try {
+    localStorage.setItem(UPDATE_DISMISS_KEY, String(atziriUpdate.value.build));
+  } catch {
+    // storage unavailable
+  }
+}
 async function loadAtziriUpdate() {
   try {
     const s = await (await fetch("/atziri-data/status")).json();
@@ -1229,6 +1249,17 @@ const rows = computed(() => {
 
 .ar-hub .ar-update:hover {
   color: var(--accent);
+}
+.ar-hub .ar-update .ar-update-x {
+  margin-left: auto;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.ar-hub .ar-update .ar-update-x:hover {
+  color: var(--fg);
 }
 
 /* .tabs */
