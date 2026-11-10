@@ -290,7 +290,8 @@ export interface GridCell {
   spacer?: boolean; // empty spot of the game layout (hidden unless editing)
 }
 const C = (name: string) => `Currency|${name}`;
-/** game layout: cell id -> default item key */
+/** default layout (the game's Currency tab, arranged by the player): cell id -> item key */
+const O = (name: string) => `Ritual|${name}`;
 export const GRID_DEFAULTS: Record<string, string | null> = {
   L0: C("Orb of Transmutation"), L1: C("Greater Orb of Transmutation"), L2: C("Perfect Orb of Transmutation"),
   L3: C("Orb of Augmentation"), L4: C("Greater Orb of Augmentation"), L5: C("Perfect Orb of Augmentation"),
@@ -299,11 +300,15 @@ export const GRID_DEFAULTS: Record<string, string | null> = {
   L12: C("Chaos Orb"), L13: C("Greater Chaos Orb"), L14: C("Perfect Chaos Orb"),
   M0: C("Orb of Alchemy"), M1: C("Vaal Orb"), M2: C("Orb of Annulment"),
   M3: C("Orb of Chance"), M4: C("Fracturing Orb"), M5: C("Divine Orb"),
-  M6: null, M7: C("Mirror of Kalandra"), M8: C("Hinekora's Lock"),
-  R0: C("Lesser Jeweller's Orb"), R1: C("Greater Jeweller's Orb"), R2: C("Perfect Jeweller's Orb"),
-  R3: null, R4: null, R5: C("Artificer's Orb"),
+  M6: "Essences|Essence of the Breach", M7: C("Mirror of Kalandra"), M8: C("Hinekora's Lock"),
+  R0: O("Omen of Abyssal Echoes"), R1: O("Omen of Light"), R2: O("Omen of Putrefaction"),
+  R3: O("Omen of Sinistral Necromancy"), R4: O("Omen of Dextral Necromancy"), R5: C("Artificer's Orb"),
   R6: C("Arcanist's Etcher"), R7: C("Armourer's Scrap"), R8: C("Blacksmith's Whetstone"),
-  R9: null, R10: C("Glassblower's Bauble"), R11: C("Gemcutter's Prism"),
+  R9: "Essences|Essence of the Abyss", R10: O("Omen of Sinistral Crystallisation"), R11: O("Omen of Dextral Crystallisation"),
+  F0: O("Omen of Sinistral Erasure"), F1: O("Omen of Dextral Erasure"), F2: O("Omen of Whittling"),
+  F3: O("Omen of Catalysing Exaltation"), F4: null, F5: "Runes|Kolr's Hunt", F6: "Runes|Astrid's Creativity",
+  F7: O("Omen of Sinistral Annulment"), F8: O("Omen of Dextral Annulment"), F9: null, F10: null,
+  F11: "Verisium|Celestial Alloy", F12: "Verisium|Prismatic Alloy", F13: "Runes|Cadigan's Epiphany",
 };
 const cells = (p: string, n: number) =>
   Array.from({ length: n }, (_, i): GridCell => ({ id: `${p}${i}`, spacer: GRID_DEFAULTS[`${p}${i}`] === null }));

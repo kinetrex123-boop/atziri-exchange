@@ -144,7 +144,7 @@
             <span class="fm-sp"></span>
             <template v-if="editing">
               <button type="button" class="fm-btn" @click="confirmResetSlots">
-                <i class="fas fa-undo"></i> {{ tr("Disposition du jeu", "Game layout") }}
+                <i class="fas fa-undo"></i> {{ tr("Disposition par défaut", "Default layout") }}
               </button>
               <button type="button" class="fm-btn cr-done" @click="stopEditing">{{ tr("Terminé", "Done") }}</button>
             </template>
@@ -253,8 +253,7 @@
         </div>
         <div v-if="craft.bases.length" class="cr-bases">
           <div v-for="b in craft.bases" :key="b.id" class="cr-base">
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <span class="cr-bi" v-html="baseIconSvg(b.icon)"></span>
+            <span class="cr-bi" :title="isFr ? baseIcon(b.icon).fr : baseIcon(b.icon).en"><img :src="baseIcon(b.icon).img" alt="" /></span>
             <b class="cr-bname">{{ b.name }}</b>
             <button type="button" class="fm-btn" :title="tr('Ouvrir dans l\'onglet Trade', 'Open in the Trade tab')" @click="openInHub(b.url, 'trade')">
               {{ tr("Ouvrir", "Open") }} <i class="fas fa-external-link-alt"></i>
@@ -294,8 +293,7 @@
               :class="{ on: baseForm.icon === ic.id }"
               @click="baseForm.icon = ic.id"
             >
-              <!-- eslint-disable-next-line vue/no-v-html -->
-              <span v-html="baseIconSvg(ic.id)"></span>
+              <span><img :src="ic.img" alt="" /></span>
               {{ isFr ? ic.fr : ic.en }}
             </button>
           </div>
@@ -318,7 +316,7 @@ import { AppConfig } from "@/web/Config";
 import type { ItemCheckWidget } from "@/web/item-check/widget";
 import { hubTab, openInHub } from "./atziri-hub";
 import { rates } from "./atziri-money";
-import { CRAFT_BASE_ICONS, baseIconSvg } from "./atziri-craft-icons";
+import { CRAFT_BASE_ICONS, baseIcon } from "./atziri-craft-icons";
 import {
   craft,
   craftSession as sess,
@@ -532,7 +530,7 @@ function stopEditing() {
   pickCell.value = null;
 }
 function confirmResetSlots() {
-  if (window.confirm(tr("Remettre toutes les cases comme dans le jeu ?", "Put every cell back as in the game?"))) {
+  if (window.confirm(tr("Remettre toutes les cases par défaut ?", "Put every cell back to the default?"))) {
     resetSlots();
   }
 }
@@ -564,12 +562,12 @@ const baseForm = ref<{ id: number | null; url: string; name: string; icon?: stri
 const baseError = shallowRef("");
 const baseUrlEl = shallowRef<HTMLInputElement | null>(null);
 function startAddBase() {
-  baseForm.value = { id: null, url: "", name: "", icon: "body" };
+  baseForm.value = { id: null, url: "", name: "", icon: "armour" };
   baseError.value = "";
   nextTick(() => baseUrlEl.value?.focus());
 }
 function startEditBase(b: CraftBase) {
-  baseForm.value = { id: b.id, url: b.url, name: b.name, icon: b.icon ?? "body" };
+  baseForm.value = { id: b.id, url: b.url, name: b.name, icon: baseIcon(b.icon).id };
   baseError.value = "";
 }
 function saveBase() {
@@ -933,7 +931,7 @@ function confirmRemoveBase(id: number, name: string) {
 /* bases */
 .cr-bases {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px 10px;
 }
 .cr-base {
@@ -947,8 +945,8 @@ function confirmRemoveBase(id: number, name: string) {
 }
 .cr-bi,
 .cr-icb > span {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex: none;
   border-radius: 50%;
   border: 2px solid #b8873f;
@@ -962,9 +960,11 @@ function confirmRemoveBase(id: number, name: string) {
 .cr-bi {
   color: #e6c27a;
 }
-.cr-bi svg {
-  width: 20px;
-  height: 20px;
+.cr-bi img,
+.cr-icb > span img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 .cr-icb > span {
   display: flex;
@@ -996,7 +996,7 @@ function confirmRemoveBase(id: number, name: string) {
 }
 .cr-icons {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   margin-top: 6px;
 }
@@ -1011,11 +1011,6 @@ function confirmRemoveBase(id: number, name: string) {
   padding: 7px 2px 5px;
   font-size: 0.68rem;
   color: var(--fg);
-}
-.cr-icb svg {
-  width: 20px;
-  height: 20px;
-  color: #e6c27a;
 }
 .fm-wrap .cr-icb.on,
 .fm-wrap .cr-icb:hover {
