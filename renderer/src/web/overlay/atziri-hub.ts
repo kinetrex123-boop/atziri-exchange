@@ -8,6 +8,7 @@ export type HubTab =
   | "market"
   | "regex"
   | "farm"
+  | "farmsetup"
   | "stats"
   | "crafttrack"
   | "history"

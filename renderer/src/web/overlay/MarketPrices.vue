@@ -96,6 +96,7 @@
     </template>
 
     <FarmPane v-show="hubTab === 'farm'" />
+    <FarmSetupPane v-show="hubTab === 'farmsetup'" />
     <StatsPane v-show="hubTab === 'stats'" />
     <CraftPane v-show="hubTab === 'crafttrack'" />
     <HistoryPane v-if="hubTab === 'history'" />
@@ -294,6 +295,7 @@ import { hubTab, hubVisible, WEB_TABS, openInHub, isDetachedHub, type HubTab } f
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
+import FarmSetupPane from "./FarmSetupPane.vue";
 import StatsPane from "./StatsPane.vue";
 import CraftPane from "./CraftPane.vue";
 import ConfirmBox from "./ConfirmBox.vue";
@@ -512,6 +514,7 @@ const allTabs = computed<HubTabEntry[]>(() => {
     web("trade"),
     web("regexeng"),
     { id: "farm", icon: "fa-map", label: "Farm" },
+    { id: "farmsetup", icon: "fa-th-large", label: tr("Setup farm", "Farm setups") },
     { id: "stats", icon: "fa-chart-bar", label: "Stats" },
     web("ninja"),
   ];
@@ -561,6 +564,7 @@ function onTabDrop(target: string) {
 const activeTabLabel = computed(() => {
   if (hubTab.value === "market") return "Economy";
   if (hubTab.value === "farm") return "Farm";
+  if (hubTab.value === "farmsetup") return tr("Setup farm", "Farm setups");
   if (hubTab.value === "stats") return "Stats";
   if (hubTab.value === "crafttrack") return tr("Suivi craft", "Craft tracking");
   if (hubTab.value === "history") return tr("Historique", "History");
