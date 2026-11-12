@@ -79,7 +79,10 @@ const props = defineProps({
 const initialSrc =
   webTabRequest.value?.tab === props.tab.id
     ? webTabRequest.value.url
-    : localizeUrl(webTabUrls.value[props.tab.id] ?? props.tab.home);
+    : // Craft of Exile always starts on its home page (https://www.craftofexile.com/?cl=fr)
+      props.tab.id === "craft"
+      ? localizeUrl(props.tab.home)
+      : localizeUrl(webTabUrls.value[props.tab.id] ?? props.tab.home);
 const addressInput = shallowRef(initialSrc);
 // the parts of Electron's <webview> element used here
 interface WebviewElement extends HTMLElement {
