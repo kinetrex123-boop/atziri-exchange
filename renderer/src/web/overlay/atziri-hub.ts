@@ -182,3 +182,24 @@ watch(farmView, (v) => {
     // storage unavailable
   }
 });
+
+/** Craft tab: Craft of Exile page or craft tracking, the last one used is reopened */
+export type CraftView = "craft" | "crafttrack";
+const CRAFT_VIEW_KEY = "atziri-craft-view";
+function loadCraftView(): CraftView {
+  try {
+    return localStorage.getItem(CRAFT_VIEW_KEY) === "crafttrack" ? "crafttrack" : "craft";
+  } catch {
+    return "craft";
+  }
+}
+export const craftView = shallowRef<CraftView>(loadCraftView());
+watch(hubTab, (tab) => {
+  if (tab !== "craft" && tab !== "crafttrack") return;
+  craftView.value = tab;
+  try {
+    localStorage.setItem(CRAFT_VIEW_KEY, tab);
+  } catch {
+    // storage unavailable
+  }
+});

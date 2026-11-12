@@ -27,12 +27,14 @@ import { tr } from "@/web/atziri-lang";
 
 <style lang="postcss">
 .ar-hub .fv-switch {
+  flex: 0 0 auto;
+  white-space: nowrap;
   display: inline-flex;
   border: 1px solid var(--line);
   border-radius: 6px;
   overflow: hidden;
 }
-.ar-hub .fv-switch button {
+.ar-hub .fv-switch.fv-switch button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -43,13 +45,13 @@ import { tr } from "@/web/atziri-lang";
   color: var(--muted);
   font-size: 0.85rem;
 }
-.ar-hub .fv-switch button + button {
+.ar-hub .fv-switch.fv-switch button + button {
   border-left: 1px solid var(--line);
 }
-.ar-hub .fv-switch button:hover {
+.ar-hub .fv-switch.fv-switch button:hover {
   color: var(--accent);
 }
-.ar-hub .fv-switch button[aria-selected="true"] {
+.ar-hub .fv-switch.fv-switch button[aria-selected="true"] {
   background: var(--accent-soft, var(--surface));
   color: var(--accent);
 }

@@ -4,6 +4,7 @@
     <div class="fm-wrap">
       <!-- session, counter state, help -->
       <div class="fm-head">
+        <CraftViewSwitch />
         <select
           class="ar-search fm-select"
           :value="sess.id"
@@ -328,6 +329,7 @@ import { tr, isFrench } from "@/web/atziri-lang";
 import { AppConfig } from "@/web/Config";
 import type { ItemCheckWidget } from "@/web/item-check/widget";
 import { hubTab, hubVisible, openInHub, isTradeUrl } from "./atziri-hub";
+import CraftViewSwitch from "./CraftViewSwitch.vue";
 import { rates } from "./atziri-money";
 import { CRAFT_BASE_ICONS, baseIcon } from "./atziri-craft-icons";
 import { askConfirm } from "./atziri-confirm";

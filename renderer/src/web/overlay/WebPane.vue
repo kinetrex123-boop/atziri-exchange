@@ -2,6 +2,7 @@
   <!-- Atziri Exchange: one web page tab of the Shift + Space hub -->
   <div class="ar-body ar-browser">
     <div class="ar-browser-bar">
+      <CraftViewSwitch v-if="tab.id === 'craft'" />
       <button type="button" :title="tr('Précédent', 'Back')" @click="webviewDo('goBack')">
         <i class="fas fa-arrow-left"></i>
       </button>
@@ -58,6 +59,7 @@
 import { shallowRef, watch, type PropType } from "vue";
 import { tr } from "@/web/atziri-lang";
 import TradeFavorites from "./TradeFavorites.vue";
+import CraftViewSwitch from "./CraftViewSwitch.vue";
 import {
   type WebTab,
   webTabUrls,
