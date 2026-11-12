@@ -35,8 +35,8 @@
           role="tab"
           draggable="true"
           :class="{ 'ar-tab-drop': tabDrop === tb.id }"
-          :aria-selected="hubTab === tb.id || (tb.id === 'craft' && hubTab === 'crafttrack')"
-          @click="hubTab = tb.id === 'craft' ? craftView : tb.id"
+          :aria-selected="hubTab === tb.id || (tabGroup(tb.id) !== undefined && tabGroup(tb.id) === tabGroup(hubTab))"
+          @click="hubTab = tabGroup(tb.id) ? groupLastTab(tabGroup(tb.id)!) : tb.id"
           @dragstart="onTabDragStart(tb.id, $event)"
           @dragover.prevent="tabDrop = tb.id"
           @dragleave="tabDrop = tabDrop === tb.id ? null : tabDrop"
@@ -291,7 +291,7 @@ import {
 import { AppConfig } from "@/web/Config";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
 import type { WidgetManager } from "./interfaces";
-import { hubTab, hubVisible, farmView, craftView, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
+import { hubTab, hubVisible, farmView, tabGroup, groupLastTab, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
@@ -513,7 +513,6 @@ const allTabs = computed<HubTabEntry[]>(() => {
     web("trade"),
     web("regexeng"),
     { id: "farm", icon: "fa-map", label: "Farm" },
-    { id: "stats", icon: "fa-chart-bar", label: "Stats" },
     web("ninja"),
   ];
 });
