@@ -36,26 +36,25 @@
             <b>{{ tr("Setup farm", "Farm setups") }}</b>
             <template v-if="isFr">
               <br />Une fiche par stratégie de farm. <br />• Titre : clique
-              dessus pour l'écrire. <br />• Liens bleus : clic = ouvre la
-              recherche dans l'onglet Trade. Crayon = renommer ou changer le
-              lien (« Page Trade ouverte » reprend la recherche affichée dans
-              l'onglet Trade). <br />• Cadre noir : clique pour choisir une
-              image, glisse un fichier, ou fais Ctrl + V après une capture (Win
-              + Maj + S). Clic sur l'image = plein écran. <br />• Cadre vert :
-              tes notes, enregistrées toutes seules. <br />• Flèche à droite :
+              dessus pour l'écrire. <br />• Liens : clic = ouvre la recherche
+              dans l'onglet Trade. Crayon = renommer ou changer le lien (« Page
+              Trade ouverte » reprend la recherche affichée dans l'onglet
+              Trade). <br />• Grand cadre : clique pour choisir une image,
+              glisse un fichier, ou fais Ctrl + V après une capture (Win + Maj +
+              S). Clic sur l'image = plein écran. <br />• Cadre du bas : tes
+              notes, enregistrées toutes seules. <br />• Flèche à droite :
               nouvelle fiche. Fais défiler avec la molette ou les flèches du
               haut.
             </template>
             <template v-else>
               <br />One card per farming strategy. <br />• Title: click it to
-              write it. <br />• Blue links: click = opens the search in the
-              Trade tab. Pencil = rename or change the link ("Open Trade page"
-              takes the search shown in the Trade tab). <br />• Black frame:
-              click to pick an image, drop a file, or press Ctrl + V after a
-              screenshot (Win + Shift + S). Click the image = full screen.
-              <br />• Green frame: your notes, saved automatically. <br />•
-              Arrow on the right: new card. Scroll with the wheel or the arrows
-              at the top.
+              write it. <br />• Links: click = opens the search in the Trade
+              tab. Pencil = rename or change the link ("Open Trade page" takes
+              the search shown in the Trade tab). <br />• Large frame: click to
+              pick an image, drop a file, or press Ctrl + V after a screenshot
+              (Win + Shift + S). Click the image = full screen. <br />• Bottom
+              frame: your notes, saved automatically. <br />• Arrow on the
+              right: new card. Scroll with the wheel or the arrows at the top.
             </template>
           </span>
         </span>
@@ -265,7 +264,7 @@
           </div>
         </section>
 
-        <!-- orange arrow: new card -->
+        <!-- arrow: new card -->
         <button
           type="button"
           class="fs-add"
@@ -549,7 +548,7 @@ onUnmounted(() => {
 }
 .ar-hub .fs-tools .fs-del:hover,
 .ar-hub .fs-img-tools .fs-del:hover {
-  color: #d9584a;
+  color: var(--bad);
 }
 
 /* plain buttons (the hub gives every button a frame) */
@@ -566,21 +565,22 @@ onUnmounted(() => {
   border: 1px solid transparent;
 }
 
-/* red bar: title */
+/* title */
 .ar-hub .fs-title {
   align-self: center;
   width: 70%;
   text-align: center;
   padding: 6px 10px;
   border-radius: 4px;
-  border: 1px solid transparent;
-  background: #7a0f1c;
-  color: #fff;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--display);
   font-weight: 600;
   font-size: 1rem;
 }
 .ar-hub .fs-title::placeholder {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--muted);
 }
 .ar-hub .fs-title:focus {
   outline: none;
@@ -625,8 +625,8 @@ onUnmounted(() => {
   min-width: 0;
   padding: 4px 26px 4px 8px;
   border-radius: 4px;
-  background: #0c6fae;
-  color: #fff;
+  background: var(--surface);
+  color: var(--fg);
   font-weight: 600;
   font-size: 0.85rem;
   overflow: hidden;
@@ -634,13 +634,14 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .ar-hub .fs-link-go:hover {
-  background: #1488d3;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .ar-hub .fs-link.empty .fs-link-go {
   padding-right: 8px;
   background: transparent;
-  border: 1px dashed #1488d3;
-  color: #5fb3e8;
+  border: 1px dashed var(--line);
+  color: var(--muted);
   font-weight: 400;
 }
 .ar-hub .fs-link-edit {
@@ -650,21 +651,21 @@ onUnmounted(() => {
   transform: translateY(-50%);
   width: 20px;
   height: 20px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--muted);
   font-size: 0.7rem;
 }
 .ar-hub .fs-link-edit:hover {
-  color: #fff;
+  color: var(--accent);
 }
 
-/* black frame: screenshot */
+/* screenshot */
 .ar-hub .fs-img {
   grid-area: img;
   position: relative;
   min-height: 0;
   border-radius: 4px;
-  background: #000;
-  border: 1px solid #000;
+  background: rgb(0 0 0 / 0.45);
+  border: 1px solid var(--line);
   overflow: hidden;
 }
 .ar-hub .fs-img.over {
@@ -685,7 +686,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 8px;
-  color: #777;
+  color: var(--muted);
   font-size: 0.8rem;
 }
 .ar-hub .fs-img-empty i {
@@ -708,21 +709,21 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-/* green frame: notes */
+/* notes */
 .ar-hub .fs-notes {
   min-height: 70px;
   resize: vertical;
   padding: 6px 8px;
   border-radius: 4px;
-  border: 1px solid #1f9d4a;
-  background: rgb(31 157 74 / 0.14);
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--fg);
   font-size: 0.85rem;
   line-height: 1.4;
 }
 .ar-hub .fs-notes:focus {
   outline: none;
-  border-color: #2fcf68;
+  border-color: var(--accent);
 }
 
 /* link editor */
@@ -755,7 +756,7 @@ onUnmounted(() => {
   border-color: var(--accent);
 }
 
-/* orange arrow: new card */
+/* arrow: new card */
 .ar-hub .fs-add.fs-add {
   flex: 0 0 76px;
   align-self: center;
@@ -764,7 +765,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 14px 4px;
-  color: #ff7f27;
+  color: var(--accent);
   font-size: 0.75rem;
   text-align: center;
   border-radius: 8px;
@@ -773,7 +774,7 @@ onUnmounted(() => {
   font-size: 2.6rem;
 }
 .ar-hub .fs-add:hover {
-  background: rgb(255 127 39 / 0.12);
+  background: var(--surface);
 }
 
 /* full screen image */
