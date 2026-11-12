@@ -48,13 +48,13 @@
       </div>
 
       <template v-if="offence.rows.length">
-        <div class="pc-grp">{{ tr("Attaque", "Offence") }} · {{ offence.label }}</div>
+        <div class="pc-grp">{{ tr("Meilleure compétence", "Best skill") }} · {{ offence.label }}</div>
         <div v-for="o in offence.rows" :key="o.key" class="pc-row">
           <span>{{ tr(o.fr, o.en) }}</span>
-          <span class="pc-num">{{ fmtNum(o.before, isFr) }}{{ o.unit }}</span>
+          <span class="pc-num">{{ fmtStat(o.before, o) }}</span>
           <span class="pc-muted">→</span>
-          <span class="pc-num">{{ fmtNum(o.after, isFr) }}{{ o.unit }}</span>
-          <span class="pc-num" :class="cls(o.after - o.before)">{{ signed(o.after - o.before) }}</span>
+          <span class="pc-num">{{ fmtStat(o.after, o) }}</span>
+          <span class="pc-num" :class="cls(o.after - o.before)">{{ signedStat(o.after - o.before, o) }}</span>
         </div>
       </template>
 
@@ -69,18 +69,23 @@
         </div>
       </template>
 
-      <!-- mod lines, this item vs the equipped one -->
-      <template v-if="(state.data.lines?.length ?? 0) || (slot?.currentLines?.length ?? 0)">
+      <!-- mod lines, this item vs the equipped one, the same kind of mod on one row -->
+      <template v-if="modRows.length">
         <div class="pc-grp">{{ tr("Mods", "Mods") }}</div>
         <div class="pc-mods">
-          <div>
-            <div class="pc-cap">{{ tr("Cet objet", "This item") }}</div>
-            <div v-for="(l, i) in state.data.lines ?? []" :key="'n' + i" :class="currentSet.has(l) ? 'pc-muted' : 'pc-ok'">{{ l }}</div>
-          </div>
-          <div>
-            <div class="pc-cap">{{ tr("Équipé", "Equipped") }}</div>
-            <div v-for="(l, i) in slot?.currentLines ?? []" :key="'c' + i" :class="newSet.has(l) ? 'pc-muted' : 'pc-bad'">{{ l }}</div>
-          </div>
+          <div class="pc-cap">{{ tr("Cet objet", "This item") }}</div>
+          <div class="pc-cap">{{ tr("Équipé", "Equipped") }}</div>
+          <template v-for="(m, i) in modRows" :key="i">
+            <div v-if="m.sep" class="pc-mod-sep">{{ m.sep }}</div>
+            <div class="pc-mod" :class="m.newCls">
+              <div v-for="(l, k) in m.newLines" :key="k">{{ l }}</div>
+              <span v-if="!m.newLines.length" class="pc-muted">—</span>
+            </div>
+            <div class="pc-mod" :class="m.curCls">
+              <div v-for="(l, k) in m.curLines" :key="k">{{ l }}</div>
+              <span v-if="!m.curLines.length" class="pc-muted">—</span>
+            </div>
+          </template>
         </div>
       </template>
 
@@ -109,9 +114,6 @@ watch(state, () => {
   slotIndex.value = 0;
 });
 const slot = computed(() => state.value?.data?.slots[slotIndex.value]);
-// same line on both items: shown grey; only on one: green / red
-const newSet = computed(() => new Set(state.value?.data?.lines ?? []));
-const currentSet = computed(() => new Set(slot.value?.currentLines ?? []));
 
 const DEF = [
   { key: "Life", fr: "Vie", en: "Life", unit: "" },
@@ -139,17 +141,27 @@ const DEF = [
   { key: "Int", fr: "Intelligence", en: "Intelligence", unit: "" },
 ];
 
-// attack / spell numbers of the first skill listed
-const OFF = [
-  { key: "AverageHit", fr: "Coup moyen", en: "Average hit", unit: "" },
-  { key: "AverageDamage", fr: "Dégâts moyens", en: "Average damage", unit: "" },
-  { key: "CritChance", fr: "Chances de critique", en: "Crit chance", unit: " %" },
-  { key: "CritMultiplier", fr: "Multiplicateur crit.", en: "Crit multiplier", unit: "" },
-  { key: "Speed", fr: "Vitesse (attaques/s)", en: "Speed (per second)", unit: "" },
-  { key: "HitChance", fr: "Précision", en: "Hit chance", unit: " %" },
-  { key: "BleedDPS", fr: "Saignement (DPS)", en: "Bleed DPS", unit: "" },
-  { key: "IgniteDPS", fr: "Embrasement (DPS)", en: "Ignite DPS", unit: "" },
-  { key: "PoisonDPS", fr: "Poison (DPS)", en: "Poison DPS", unit: "" },
+// numbers of the best skill: the first four always, the others when they change
+interface OffStat {
+  key: string;
+  fr: string;
+  en: string;
+  unit: string;
+  dec: number;
+  always?: boolean;
+  mult?: boolean;
+}
+const OFF: OffStat[] = [
+  { key: "AverageHit", fr: "Coup moyen", en: "Average hit", unit: "", dec: 0, always: true },
+  { key: "Speed", fr: "Vitesse (par seconde)", en: "Speed (per second)", unit: "", dec: 2, always: true },
+  { key: "CritChance", fr: "Chances de critique", en: "Crit chance", unit: " %", dec: 2, always: true },
+  { key: "CritMultiplier", fr: "Multiplicateur critique", en: "Crit multiplier", unit: "", dec: 2, always: true, mult: true },
+  { key: "AverageDamage", fr: "Dégâts moyens", en: "Average damage", unit: "", dec: 0 },
+  { key: "HitChance", fr: "Chances de toucher", en: "Hit chance", unit: " %", dec: 1 },
+  { key: "BleedDPS", fr: "Saignement (DPS)", en: "Bleed DPS", unit: "", dec: 0 },
+  { key: "IgniteDPS", fr: "Embrasement (DPS)", en: "Ignite DPS", unit: "", dec: 0 },
+  { key: "PoisonDPS", fr: "Poison (DPS)", en: "Poison DPS", unit: "", dec: 0 },
+  { key: "TotalDot", fr: "Dégâts sur la durée", en: "Damage over time", unit: "", dec: 0 },
 ];
 
 const offence = computed(() => {
@@ -157,12 +169,96 @@ const offence = computed(() => {
   const before = sk?.statsBefore;
   const after = sk?.statsAfter?.[slotIndex.value];
   if (!sk || !before || !after) return { label: "", rows: [] };
+  // a spell has no "average hit" for PoB: its average damage takes its place
+  const hasHit = before.AverageHit != null || after.AverageHit != null;
   const rows = OFF.filter((o) => {
     const b = before[o.key];
     const a = after[o.key];
-    return (b != null || a != null) && Math.abs((a ?? 0) - (b ?? 0)) > 0.0005;
+    if (b == null && a == null) return false;
+    if (o.key === "AverageDamage") return !hasHit;
+    if (o.always) return true;
+    return Math.abs((a ?? 0) - (b ?? 0)) > 0.0005;
   }).map((o) => ({ ...o, before: before[o.key] ?? 0, after: after[o.key] ?? 0 }));
   return { label: sk.label, rows };
+});
+
+function fmtStat(v: number, o: OffStat) {
+  if (!Number.isFinite(v)) return "—";
+  const txt =
+    o.dec > 0 && Math.abs(v) < 1000
+      ? v.toLocaleString(isFr.value ? "fr-FR" : "en-GB", { maximumFractionDigits: o.dec })
+      : fmtNum(v, isFr.value);
+  return (o.mult ? "×" : "") + txt + o.unit;
+}
+function signedStat(v: number, o: OffStat) {
+  if (Math.abs(v) < 0.0005) return "=";
+  return (v > 0 ? "+" : "") + fmtStat(v, { ...o, mult: false });
+}
+
+// ---- mods: same kind of mod (numbers left aside) on the same row ----
+interface ModRow {
+  newLines: string[];
+  curLines: string[];
+  newCls: string;
+  curCls: string;
+  sep?: string;
+}
+const NUM = /[+-]?\d+(?:[.,]\d+)?/g;
+const cleanLine = (l: string) => l.replace(/\\'/g, "'");
+const kindOf = (l: string) => l.replace(NUM, "#").replace(/\s+/g, " ").trim().toLowerCase();
+function total(lines: string[]): number | null {
+  let sum = 0;
+  for (const l of lines) {
+    const n = l.match(NUM);
+    // "Adds 14 to 30": the average of the two numbers
+    if (!n || n.length > 2) return null;
+    sum += n.reduce((t, x) => t + Number(x.replace(",", ".")), 0) / n.length;
+  }
+  return sum;
+}
+function groupLines(lines: string[]) {
+  const map = new Map<string, string[]>();
+  for (const raw of lines) {
+    const l = cleanLine(raw);
+    const k = kindOf(l);
+    map.set(k, [...(map.get(k) ?? []), l]);
+  }
+  return map;
+}
+const modRows = computed<ModRow[]>(() => {
+  const mine = groupLines(state.value?.data?.lines ?? []);
+  const cur = groupLines(slot.value?.currentLines ?? []);
+  const both: ModRow[] = [];
+  const onlyNew: ModRow[] = [];
+  const onlyCur: ModRow[] = [];
+  for (const [k, lines] of mine) {
+    const other = cur.get(k);
+    if (!other) {
+      onlyNew.push({ newLines: lines, curLines: [], newCls: "pc-ok", curCls: "" });
+      continue;
+    }
+    const a = total(lines);
+    const b = total(other);
+    let newCls = "pc-muted";
+    let curCls = "pc-muted";
+    if (a != null && b != null && Math.abs(a - b) > 0.0005) {
+      newCls = a > b ? "pc-ok" : "pc-bad";
+      curCls = a > b ? "pc-bad" : "pc-ok";
+    } else if (a == null || b == null) {
+      newCls = curCls = "";
+    }
+    both.push({ newLines: lines, curLines: other, newCls, curCls });
+  }
+  for (const [k, lines] of cur) {
+    if (!mine.has(k)) onlyCur.push({ newLines: [], curLines: lines, newCls: "", curCls: "pc-bad" });
+  }
+  const label = (fr: string, en: string, rows: ModRow[]) =>
+    rows.length ? [{ ...rows[0], sep: tr(fr, en) }, ...rows.slice(1)] : [];
+  return [
+    ...label("Sur les deux", "On both", both),
+    ...label("Seulement sur cet objet", "Only on this item", onlyNew),
+    ...label("Seulement sur l'équipé", "Only on the equipped one", onlyCur),
+  ];
 });
 
 function diff(key: string) {
@@ -182,7 +278,7 @@ const damageRows = computed(() => {
   if (!d) return [];
   return d.skills
     .filter((s) => s.before > 1 || (s.after[slotIndex.value] ?? 0) > 1)
-    .slice(0, 4)
+    .slice(0, 3)
     .map((s) => ({ label: s.label, before: s.before, after: s.after[slotIndex.value] ?? 0 }));
 });
 
@@ -354,10 +450,22 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 .pc-mods {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  column-gap: 12px;
   padding: 4px 16px 6px;
   font-size: 0.78rem;
-  line-height: 1.45;
+  line-height: 1.4;
+}
+.pc-mod {
+  padding: 3px 0;
+  border-bottom: 1px solid theme("colors.gray.800");
+}
+.pc-mod-sep {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: theme("colors.gray.400");
 }
 .pc-cap {
   font-size: 0.65rem;
