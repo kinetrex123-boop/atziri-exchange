@@ -4,6 +4,7 @@
     <div class="fm-wrap">
       <!-- session, timer, help -->
       <div class="fm-head">
+        <FarmViewSwitch />
         <select
           class="ar-search fm-select"
           :value="sess.id"
@@ -249,7 +250,8 @@
 <script setup lang="ts">
 import { askConfirm } from "./atziri-confirm";
 import { computed, shallowRef, watch, onMounted, onUnmounted } from "vue";
-import { hubTab, hubVisible } from "./atziri-hub";
+import { hubTab, hubVisible, farmView } from "./atziri-hub";
+import FarmViewSwitch from "./FarmViewSwitch.vue";
 import { tr, isFrench } from "@/web/atziri-lang";
 import { AppConfig } from "@/web/Config";
 import type { ItemCheckWidget } from "@/web/item-check/widget";
@@ -280,7 +282,9 @@ const now = shallowRef(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 // the clock is redrawn only while the Farm tab is on screen (times are kept
 // as start dates, so nothing is lost meanwhile)
-const farmShown = computed(() => hubVisible.value && hubTab.value === "farm");
+const farmShown = computed(
+  () => hubVisible.value && hubTab.value === "farm" && farmView.value === "journal",
+);
 onMounted(() => {
   timer = setInterval(() => {
     if (farmShown.value) now.value = Date.now();

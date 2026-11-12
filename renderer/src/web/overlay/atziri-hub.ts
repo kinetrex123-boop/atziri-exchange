@@ -8,7 +8,6 @@ export type HubTab =
   | "market"
   | "regex"
   | "farm"
-  | "farmsetup"
   | "stats"
   | "crafttrack"
   | "history"
@@ -164,3 +163,22 @@ export function isTradeUrl(url: string): boolean {
 
 /** true while the Shift + Space page is on screen (overlay open, or its own window shown) */
 export const hubVisible = shallowRef(false);
+
+/** Farm tab: farming journal or setup cards (remembered on this PC) */
+export type FarmView = "journal" | "setup";
+const FARM_VIEW_KEY = "atziri-farm-view";
+function loadFarmView(): FarmView {
+  try {
+    return localStorage.getItem(FARM_VIEW_KEY) === "setup" ? "setup" : "journal";
+  } catch {
+    return "journal";
+  }
+}
+export const farmView = shallowRef<FarmView>(loadFarmView());
+watch(farmView, (v) => {
+  try {
+    localStorage.setItem(FARM_VIEW_KEY, v);
+  } catch {
+    // storage unavailable
+  }
+});

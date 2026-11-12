@@ -3,6 +3,7 @@
   <div class="ar-body fs" @dragover.prevent @drop.prevent>
     <div class="fs-wrap">
       <div class="fs-head">
+        <FarmViewSwitch />
         <button
           type="button"
           class="fm-btn"
@@ -405,7 +406,9 @@ import {
   openInHub,
   isTradeUrl,
   webTabUrls,
+  farmView,
 } from "./atziri-hub";
+import FarmViewSwitch from "./FarmViewSwitch.vue";
 import { tr, isFrench } from "@/web/atziri-lang";
 import {
   setups,
@@ -559,7 +562,8 @@ function onDrop(id: number, e: DragEvent, slot: ImageSlot = "imageId") {
 function onPaste(e: ClipboardEvent) {
   if (
     !hubVisible.value ||
-    hubTab.value !== "farmsetup" ||
+    hubTab.value !== "farm" ||
+    farmView.value !== "setup" ||
     activeId.value == null
   )
     return;
