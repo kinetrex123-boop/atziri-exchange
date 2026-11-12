@@ -2,6 +2,7 @@
   <!-- Atziri Exchange: one web page tab of the Shift + Space hub -->
   <div class="ar-body ar-browser">
     <div class="ar-browser-bar">
+      <HubViewSwitch v-if="tabGroup(tab.id)" :group="tabGroup(tab.id)!" />
       <button type="button" :title="tr('Précédent', 'Back')" @click="webviewDo('goBack')">
         <i class="fas fa-arrow-left"></i>
       </button>
@@ -58,12 +59,14 @@
 import { shallowRef, watch, type PropType } from "vue";
 import { tr } from "@/web/atziri-lang";
 import TradeFavorites from "./TradeFavorites.vue";
+import HubViewSwitch from "./HubViewSwitch.vue";
 import {
   type WebTab,
   webTabUrls,
   webTabRequest,
   rememberTabUrl,
   localizeUrl,
+  tabGroup,
 } from "./atziri-hub";
 
 const props = defineProps({
@@ -76,7 +79,10 @@ const props = defineProps({
 const initialSrc =
   webTabRequest.value?.tab === props.tab.id
     ? webTabRequest.value.url
-    : localizeUrl(webTabUrls.value[props.tab.id] ?? props.tab.home);
+    : // Craft of Exile always starts on its home page (https://www.craftofexile.com/?cl=fr)
+      props.tab.id === "craft"
+      ? localizeUrl(props.tab.home)
+      : localizeUrl(webTabUrls.value[props.tab.id] ?? props.tab.home);
 const addressInput = shallowRef(initialSrc);
 // the parts of Electron's <webview> element used here
 interface WebviewElement extends HTMLElement {

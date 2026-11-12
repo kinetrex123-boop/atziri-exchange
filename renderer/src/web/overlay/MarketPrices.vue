@@ -35,8 +35,8 @@
           role="tab"
           draggable="true"
           :class="{ 'ar-tab-drop': tabDrop === tb.id }"
-          :aria-selected="hubTab === tb.id"
-          @click="hubTab = tb.id"
+          :aria-selected="hubTab === tb.id || (tabGroup(tb.id) !== undefined && tabGroup(tb.id) === tabGroup(hubTab))"
+          @click="hubTab = tabGroup(tb.id) ? groupLastTab(tabGroup(tb.id)!) : tb.id"
           @dragstart="onTabDragStart(tb.id, $event)"
           @dragover.prevent="tabDrop = tb.id"
           @dragleave="tabDrop = tabDrop === tb.id ? null : tabDrop"
@@ -95,7 +95,8 @@
       <WebPane v-if="openedTabs.has(tab.id)" v-show="hubTab === tab.id" :tab="tab" />
     </template>
 
-    <FarmPane v-show="hubTab === 'farm'" />
+    <FarmPane v-show="hubTab === 'farm' && farmView === 'journal'" />
+    <FarmSetupPane v-show="hubTab === 'farm' && farmView === 'setup'" />
     <StatsPane v-show="hubTab === 'stats'" />
     <CraftPane v-show="hubTab === 'crafttrack'" />
     <HistoryPane v-if="hubTab === 'history'" />
@@ -290,10 +291,11 @@ import {
 import { AppConfig } from "@/web/Config";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
 import type { WidgetManager } from "./interfaces";
-import { hubTab, hubVisible, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
+import { hubTab, hubVisible, farmView, tabGroup, groupLastTab, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
+import FarmSetupPane from "./FarmSetupPane.vue";
 import StatsPane from "./StatsPane.vue";
 import CraftPane from "./CraftPane.vue";
 import ConfirmBox from "./ConfirmBox.vue";
@@ -508,11 +510,9 @@ const allTabs = computed<HubTabEntry[]>(() => {
     { id: "market", icon: "fa-coins", label: "Economy" },
     web("poedb"),
     web("craft"),
-    { id: "crafttrack", icon: "fa-flask", label: tr("Suivi craft", "Craft tracking") },
     web("trade"),
     web("regexeng"),
     { id: "farm", icon: "fa-map", label: "Farm" },
-    { id: "stats", icon: "fa-chart-bar", label: "Stats" },
     web("ninja"),
   ];
 });

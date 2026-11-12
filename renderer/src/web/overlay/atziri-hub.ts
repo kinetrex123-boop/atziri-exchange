@@ -163,3 +163,76 @@ export function isTradeUrl(url: string): boolean {
 
 /** true while the Shift + Space page is on screen (overlay open, or its own window shown) */
 export const hubVisible = shallowRef(false);
+
+/** Farm tab: farming journal or setup cards (remembered on this PC) */
+export type FarmView = "journal" | "setup";
+const FARM_VIEW_KEY = "atziri-farm-view";
+function loadFarmView(): FarmView {
+  try {
+    return localStorage.getItem(FARM_VIEW_KEY) === "setup" ? "setup" : "journal";
+  } catch {
+    return "journal";
+  }
+}
+export const farmView = shallowRef<FarmView>(loadFarmView());
+watch(farmView, (v) => {
+  try {
+    localStorage.setItem(FARM_VIEW_KEY, v);
+  } catch {
+    // storage unavailable
+  }
+});
+
+/**
+ * Tabs that share one button in the tab bar (switch inside the page): the
+ * first view is the button's own tab, the last view used is reopened.
+ */
+export interface TabView {
+  tab: HubTab;
+  icon: string;
+  fr: string;
+  en: string;
+}
+export const TAB_GROUPS: Record<string, TabView[]> = {
+  craft: [
+    { tab: "craft", icon: "fa-hammer", fr: "Craft of Exile", en: "Craft of Exile" },
+    { tab: "crafttrack", icon: "fa-flask", fr: "Suivi", en: "Tracking" },
+  ],
+  ninja: [
+    { tab: "ninja", icon: "fa-chart-line", fr: "poe.ninja", en: "poe.ninja" },
+    { tab: "stats", icon: "fa-chart-bar", fr: "Stats", en: "Stats" },
+  ],
+};
+const GROUP_KEY = "atziri-tab-groups";
+function loadGroupViews(): Record<string, HubTab> {
+  const out: Record<string, HubTab> = {};
+  try {
+    const saved = JSON.parse(localStorage.getItem(GROUP_KEY) ?? "{}");
+    for (const [g, views] of Object.entries(TAB_GROUPS)) {
+      const v = views.find((x) => x.tab === saved?.[g]);
+      if (v) out[g] = v.tab;
+    }
+  } catch {
+    // unreadable storage
+  }
+  return out;
+}
+const groupViews = shallowRef<Record<string, HubTab>>(loadGroupViews());
+/** group of a tab, if it shares a button with another one */
+export function tabGroup(tab: HubTab): string | undefined {
+  return Object.keys(TAB_GROUPS).find((g) => TAB_GROUPS[g].some((v) => v.tab === tab));
+}
+/** tab opened by the button of a group (the last view used) */
+export function groupLastTab(group: string): HubTab {
+  return groupViews.value[group] ?? TAB_GROUPS[group][0].tab;
+}
+watch(hubTab, (tab) => {
+  const g = tabGroup(tab);
+  if (!g || groupViews.value[g] === tab) return;
+  groupViews.value = { ...groupViews.value, [g]: tab };
+  try {
+    localStorage.setItem(GROUP_KEY, JSON.stringify(groupViews.value));
+  } catch {
+    // storage unavailable
+  }
+});

@@ -2,6 +2,7 @@
   <!-- Atziri Exchange: the player's Path of Building build at a glance -->
   <div class="ar-body st">
     <div class="st-wrap">
+      <div class="st-switch"><HubViewSwitch group="ninja" /></div>
       <!-- prerequisites -->
       <div v-if="!ready" class="st-box">
         <h3>{{ tr("Pour activer l'onglet Stats et Ctrl + B", "To enable the Stats tab and Ctrl + B") }}</h3>
@@ -197,6 +198,7 @@
 import { computed, shallowRef, watch, onMounted } from "vue";
 import { tr, isFrench } from "@/web/atziri-lang";
 import { hubTab, openInHub } from "./atziri-hub";
+import HubViewSwitch from "./HubViewSwitch.vue";
 import {
   pobStatus,
   pobSelect,
@@ -371,6 +373,9 @@ watch(hubTab, (t) => {
 <style lang="postcss">
 .st {
   overflow: auto;
+}
+.st-switch {
+  display: flex;
 }
 .st-wrap {
   flex: 1;
