@@ -292,7 +292,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, shallowRef } from "vue";
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+} from "vue";
 import { askConfirm } from "./atziri-confirm";
 import {
   hubTab,
@@ -389,7 +396,7 @@ function go(url: string) {
   else if (url.includes("poe.ninja")) openInHub(url, "ninja");
   else openInHub(url, "poedb");
 }
-const edit = shallowRef<{
+const edit = ref<{
   cardId: number;
   slot: number;
   name: string;
