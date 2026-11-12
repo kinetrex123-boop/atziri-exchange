@@ -65,12 +65,20 @@
           v-for="(card, ci) in setups"
           :key="card.id"
           class="fs-card"
-          :class="{ active: activeId === card.id }"
+          :class="{ active: activeId === card.id, tinted: !!card.color }"
+          :style="card.color ? { '--card': card.color } : undefined"
           :data-id="card.id"
           @mouseenter="activeId = card.id"
           @mousedown="activeId = card.id"
         >
-          <div class="fs-tools">
+          <div class="fs-tools" :class="{ open: colorFor === card.id }">
+            <button
+              type="button"
+              :title="tr('Couleur de la fiche', 'Card color')"
+              @click="colorFor = colorFor === card.id ? null : card.id"
+            >
+              <i class="fas fa-palette"></i>
+            </button>
             <button
               type="button"
               :title="tr('Déplacer à gauche', 'Move left')"
@@ -101,6 +109,42 @@
               @click="remove(card)"
             >
               <i class="fas fa-trash"></i>
+            </button>
+          </div>
+
+          <!-- color of the card -->
+          <div v-if="colorFor === card.id" class="fs-colors">
+            <button
+              v-for="c in COLORS"
+              :key="c"
+              type="button"
+              class="fs-swatch"
+              :class="{ on: card.color === c }"
+              :style="{ background: c }"
+              @click="setColor(card.id, c)"
+            ></button>
+            <label
+              class="fs-swatch fs-custom"
+              :title="tr('Autre couleur', 'Other color')"
+            >
+              <i class="fas fa-eye-dropper"></i>
+              <input
+                type="color"
+                :value="card.color ?? '#7a2a1c'"
+                @input="
+                  setColor(card.id, ($event.target as HTMLInputElement).value)
+                "
+              />
+            </label>
+            <button
+              type="button"
+              class="fm-btn"
+              @click="setColor(card.id, null)"
+            >
+              {{ tr("Par défaut", "Default") }}
+            </button>
+            <button type="button" class="fm-btn" @click="colorFor = null">
+              OK
             </button>
           </div>
 
@@ -154,6 +198,7 @@
               @dragover.prevent.stop="dropOn = card.id"
               @dragleave="dropOn = dropOn === card.id ? null : dropOn"
               @drop.prevent.stop="onDrop(card.id, $event)"
+              @mouseenter="pasteSlot = 'imageId'"
             >
               <template
                 v-if="card.imageId != null && imageUrls.get(card.imageId)"
@@ -198,19 +243,72 @@
             </div>
           </div>
 
-          <textarea
-            class="fs-notes"
-            :value="card.notes"
-            :placeholder="
-              tr(
-                'Notes : atlas, tablettes, waystones, mods à éviter…',
-                'Notes: atlas, tablets, waystones, mods to avoid…',
-              )
-            "
-            @input="
-              setNotes(card.id, ($event.target as HTMLTextAreaElement).value)
-            "
-          ></textarea>
+          <div class="fs-bottom">
+            <textarea
+              class="fs-notes"
+              :value="card.notes"
+              :placeholder="
+                tr(
+                  'Notes : atlas, tablettes, waystones, mods à éviter…',
+                  'Notes: atlas, tablets, waystones, mods to avoid…',
+                )
+              "
+              @input="
+                setNotes(card.id, ($event.target as HTMLTextAreaElement).value)
+              "
+            ></textarea>
+            <!-- small screenshot (tablet size) -->
+            <div
+              class="fs-thumb"
+              :class="{ over: dropOn === -card.id }"
+              @dragover.prevent.stop="dropOn = -card.id"
+              @dragleave="dropOn = dropOn === -card.id ? null : dropOn"
+              @drop.prevent.stop="onDrop(card.id, $event, 'thumbId')"
+              @mouseenter="pasteSlot = 'thumbId'"
+              @mouseleave="pasteSlot = 'imageId'"
+            >
+              <template
+                v-if="card.thumbId != null && imageUrls.get(card.thumbId)"
+              >
+                <img
+                  :src="imageUrls.get(card.thumbId)"
+                  alt=""
+                  @click="zoom = imageUrls.get(card.thumbId)!"
+                />
+                <div class="fs-img-tools">
+                  <button
+                    type="button"
+                    :title="tr('Changer l\'image', 'Change the image')"
+                    @click="pick(card.id, 'thumbId')"
+                  >
+                    <i class="fas fa-image"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="fs-del"
+                    :title="tr('Retirer l\'image', 'Remove the image')"
+                    @click="removeImage(card.id, 'thumbId')"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </template>
+              <button
+                v-else
+                type="button"
+                class="fs-img-empty"
+                :title="
+                  tr(
+                    'Petite image : clique, glisse ou Ctrl + V',
+                    'Small image: click, drop or Ctrl + V',
+                  )
+                "
+                @click="pick(card.id, 'thumbId')"
+              >
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
 
           <!-- link editor -->
           <div
@@ -321,6 +419,8 @@ import {
   setLink,
   setImage,
   removeImage,
+  setColor,
+  type ImageSlot,
   type SetupCard,
 } from "./atziri-farm-setup";
 
@@ -420,23 +520,40 @@ function clearEdit() {
 }
 
 // ---- screenshot ----
+// Ctrl + V goes to the small image while the mouse is over it
+const pasteSlot = shallowRef<ImageSlot>("imageId");
+// card whose color picker is open
+const colorFor = shallowRef<number | null>(null);
+const COLORS = [
+  "#7a2a1c",
+  "#8a6a1e",
+  "#2f6b3a",
+  "#1f5f6b",
+  "#27408b",
+  "#5b2c83",
+  "#7a1f4f",
+  "#4a4a4a",
+];
+
 let pickFor: number | null = null;
-function pick(id: number) {
+let pickSlot: ImageSlot = "imageId";
+function pick(id: number, slot: ImageSlot = "imageId") {
   pickFor = id;
+  pickSlot = slot;
   fileInput.value?.click();
 }
 function onFile(e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
-  if (file && pickFor != null) setImage(pickFor, file);
+  if (file && pickFor != null) setImage(pickFor, file, pickSlot);
   input.value = "";
 }
-function onDrop(id: number, e: DragEvent) {
+function onDrop(id: number, e: DragEvent, slot: ImageSlot = "imageId") {
   dropOn.value = null;
   const file = Array.from(e.dataTransfer?.files ?? []).find((f) =>
     f.type.startsWith("image/"),
   );
-  if (file) setImage(id, file);
+  if (file) setImage(id, file, slot);
 }
 // Ctrl + V of a screenshot: goes to the card under the mouse (or the last used)
 function onPaste(e: ClipboardEvent) {
@@ -452,7 +569,7 @@ function onPaste(e: ClipboardEvent) {
   const file = item?.getAsFile();
   if (!file) return;
   e.preventDefault();
-  setImage(activeId.value, file);
+  setImage(activeId.value, file, pasteSlot.value);
 }
 function onKey(e: KeyboardEvent) {
   if (e.key === "Escape" && zoom.value) zoom.value = null;
@@ -570,6 +687,94 @@ onUnmounted(() => {
 }
 .ar-hub .fs-link-go {
   border: 1px solid transparent;
+}
+
+/* colored card */
+.ar-hub .fs-card.tinted {
+  background: color-mix(in srgb, var(--card) 22%, var(--bg));
+  border-color: color-mix(in srgb, var(--card) 70%, var(--line));
+}
+.ar-hub .fs-card.tinted.active {
+  border-color: var(--card);
+}
+.ar-hub .fs-tools.open {
+  opacity: 1;
+}
+.ar-hub .fs-colors {
+  position: absolute;
+  top: 34px;
+  right: 8px;
+  z-index: 11;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  padding: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+.ar-hub .fs-swatch.fs-swatch {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  cursor: pointer;
+}
+.ar-hub .fs-swatch.on,
+.ar-hub .fs-swatch:hover {
+  border-color: var(--fg);
+}
+.ar-hub .fs-custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.7rem;
+  background: var(--surface);
+}
+.ar-hub .fs-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* notes + small image */
+.ar-hub .fs-bottom {
+  display: flex;
+  gap: 10px;
+}
+.ar-hub .fs-bottom .fs-notes {
+  flex: 1;
+  min-width: 0;
+}
+.ar-hub .fs-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 84px;
+  height: 84px;
+  align-self: flex-end;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.45);
+  border: 1px dashed var(--line);
+  overflow: hidden;
+}
+.ar-hub .fs-thumb.over {
+  border-color: var(--accent);
+}
+.ar-hub .fs-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+.ar-hub .fs-thumb:hover .fs-img-tools {
+  opacity: 1;
 }
 
 /* title */

@@ -17,6 +17,8 @@ export interface SetupCard {
   links: SetupLink[]; // always LINK_SLOTS entries (empty url = free slot)
   notes: string;
   imageId: number | null;
+  thumbId: number | null; // small screenshot (tablet size)
+  color: string | null; // card color, null = theme
 }
 
 const KEY = "atziri-farm-setups";
@@ -47,6 +49,11 @@ function clean(raw: unknown): SetupCard[] {
         links,
         notes: typeof c.notes === "string" ? c.notes : "",
         imageId: typeof c.imageId === "number" ? c.imageId : null,
+        thumbId: typeof c.thumbId === "number" ? c.thumbId : null,
+        color:
+          typeof c.color === "string" && /^#[0-9a-f]{6}$/i.test(c.color)
+            ? c.color
+            : null,
       };
     });
 }
@@ -89,6 +96,8 @@ export function addCard(afterId?: number): number {
     links: emptyLinks(),
     notes: "",
     imageId: null,
+    thumbId: null,
+    color: null,
   };
   const list = [...setups.value];
   const at = afterId == null ? -1 : list.findIndex((c) => c.id === afterId);
@@ -101,19 +110,22 @@ export function addCard(afterId?: number): number {
 export async function duplicateCard(id: number): Promise<number | null> {
   const src = setups.value.find((c) => c.id === id);
   if (!src) return null;
-  let imageId: number | null = null;
-  const blob = src.imageId != null ? await idbGet(src.imageId) : undefined;
-  if (blob) {
-    imageId = newId() + 1;
-    await idbPut(imageId, blob);
-    setImageUrl(imageId, blob);
-  }
+  const copyImage = async (from: number | null, offset: number) => {
+    const blob = from != null ? await idbGet(from) : undefined;
+    if (!blob) return null;
+    const to = newId() + offset;
+    await idbPut(to, blob);
+    setImageUrl(to, blob);
+    return to;
+  };
   const copy: SetupCard = {
     id: newId(),
     title: src.title ? `${src.title} (2)` : "",
     links: src.links.map((l) => ({ ...l })),
     notes: src.notes,
-    imageId,
+    imageId: await copyImage(src.imageId, 1),
+    thumbId: await copyImage(src.thumbId, 2),
+    color: src.color,
   };
   const list = [...setups.value];
   list.splice(list.findIndex((c) => c.id === id) + 1, 0, copy);
@@ -125,6 +137,7 @@ export async function deleteCard(id: number) {
   const card = setups.value.find((c) => c.id === id);
   save(setups.value.filter((c) => c.id !== id));
   if (card?.imageId != null) await dropImage(card.imageId);
+  if (card?.thumbId != null) await dropImage(card.thumbId);
 }
 
 export function moveCard(id: number, delta: -1 | 1) {
@@ -142,6 +155,10 @@ function patch(id: number, fn: (c: SetupCard) => SetupCard) {
 
 export function setTitle(id: number, title: string) {
   patch(id, (c) => ({ ...c, title }));
+}
+
+export function setColor(id: number, color: string | null) {
+  patch(id, (c) => ({ ...c, color }));
 }
 
 export function setNotes(id: number, notes: string) {
@@ -218,9 +235,11 @@ async function dropImage(imageId: number) {
 
 export async function loadImages() {
   for (const c of setups.value) {
-    if (c.imageId == null || imageUrls.value.has(c.imageId)) continue;
-    const blob = await idbGet(c.imageId);
-    if (blob) setImageUrl(c.imageId, blob);
+    for (const imageId of [c.imageId, c.thumbId]) {
+      if (imageId == null || imageUrls.value.has(imageId)) continue;
+      const blob = await idbGet(imageId);
+      if (blob) setImageUrl(imageId, blob);
+    }
   }
 }
 
@@ -243,8 +262,14 @@ async function shrink(file: Blob): Promise<Blob> {
   }
 }
 
+export type ImageSlot = "imageId" | "thumbId";
+
 /** puts a screenshot on a card (replaces the previous one) */
-export async function setImage(id: number, file: Blob): Promise<boolean> {
+export async function setImage(
+  id: number,
+  file: Blob,
+  slot: ImageSlot = "imageId",
+): Promise<boolean> {
   const card = setups.value.find((c) => c.id === id);
   if (!card || !file.type.startsWith("image/")) return false;
   const blob = await shrink(file);
@@ -255,17 +280,17 @@ export async function setImage(id: number, file: Blob): Promise<boolean> {
     return false;
   }
   setImageUrl(imageId, blob);
-  const old = card.imageId;
-  patch(id, (c) => ({ ...c, imageId }));
+  const old = card[slot];
+  patch(id, (c) => ({ ...c, [slot]: imageId }));
   if (old != null) await dropImage(old);
   return true;
 }
 
-export async function removeImage(id: number) {
+export async function removeImage(id: number, slot: ImageSlot = "imageId") {
   const card = setups.value.find((c) => c.id === id);
-  if (!card || card.imageId == null) return;
-  const old = card.imageId;
-  patch(id, (c) => ({ ...c, imageId: null }));
+  const old = card?.[slot];
+  if (old == null) return;
+  patch(id, (c) => ({ ...c, [slot]: null }));
   await dropImage(old);
 }
 
