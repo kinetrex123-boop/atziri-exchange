@@ -30,8 +30,8 @@ document.addEventListener("visibilitychange", () => {
   background:
     linear-gradient(
       180deg,
-      rgb(var(--c-gray-900) / 0.2) 0%,
-      rgb(var(--c-gray-900) / 0.5) 100%
+      rgb(var(--c-gray-900) / 0.55) 0%,
+      rgb(var(--c-gray-900) / 0.82) 100%
     ),
     var(--atz-hub-bg, url("/images/atziri-bg.jpg")) center / cover no-repeat;
   background-color: rgb(var(--c-gray-900));

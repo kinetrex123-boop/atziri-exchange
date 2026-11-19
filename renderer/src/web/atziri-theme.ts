@@ -14,6 +14,11 @@ export interface ThemeColors {
 
 // Skins of the Atziri Regex page
 export const THEME_PRESETS: Record<string, { label: string; colors: ThemeColors }> = {
+  // style "Bento" (maquette E): neutral black tiles, a single orange accent
+  bento: {
+    label: "Bento",
+    colors: { bg: "#0a0a0a", surface: "#111111", line: "#242424", fg: "#fafafa", muted: "#8a8a8a", accent: "#f5a524" },
+  },
   braise: {
     label: "Temple",
     colors: { bg: "#0e0c0a", surface: "#1f1914", line: "#3b3025", fg: "#ebdfc6", muted: "#a8977b", accent: "#d8a24f" },
@@ -28,7 +33,7 @@ export const THEME_PRESETS: Record<string, { label: string; colors: ThemeColors 
   },
 };
 
-export const DEFAULT_THEME = THEME_PRESETS.braise.colors;
+export const DEFAULT_THEME = THEME_PRESETS.bento.colors;
 const STORAGE_KEY = "atziri-theme";
 
 export const themeColors = shallowRef<ThemeColors>(loadTheme());
@@ -126,7 +131,26 @@ export function setTheme(colors: ThemeColors, id: string | null = null) {
 }
 
 export function initTheme() {
+  migrateToBento();
   applyTheme(themeColors.value);
+}
+
+// One-time switch to the "Bento" colors that come with the new look, unless the
+// player uses one of their own saved themes or colors changed by hand.
+// The old themes stay available in Atziri réglage.
+const BENTO_MIGRATION_KEY = "atziri-style-bento-v1";
+function migrateToBento() {
+  try {
+    if (localStorage.getItem(BENTO_MIGRATION_KEY)) return;
+    localStorage.setItem(BENTO_MIGRATION_KEY, "1");
+    const active = activeTheme.value;
+    const savedColors = localStorage.getItem(STORAGE_KEY);
+    const builtIn = active !== null && active in THEME_PRESETS;
+    const untouched = active === null && savedColors === null;
+    if (builtIn || untouched) setTheme(THEME_PRESETS.bento.colors, "bento");
+  } catch {
+    // ignore unavailable storage
+  }
 }
 
 // ---- themes saved by the player (colors and background images) ----

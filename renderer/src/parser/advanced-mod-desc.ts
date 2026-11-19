@@ -118,6 +118,29 @@ export function parseModInfoLine(
       }
     }
 
+    // Atziri Exchange: in French the header is « Préfixe : «Nom» (Palier : 2) »
+    // and MODIFIER_LINE leaves it all in "type" (it expects "…" quotes), so the
+    // prefix / suffix and the tier were lost. Read them from the text itself.
+    if (
+      (_$.PREFIX_MODIFIER.endsWith("«") || _$.SUFFIX_MODIFIER.endsWith("«")) &&
+      match.groups!.type.includes("«")
+    ) {
+      const full = match.groups!.type;
+      // same text whatever the spaces (the game uses non-breaking spaces in French)
+      const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+      const head = norm(full.slice(0, full.indexOf("«") + 1));
+      match.groups!.type =
+        head === norm(_$.PREFIX_MODIFIER)
+          ? _$.PREFIX_MODIFIER
+          : head === norm(_$.SUFFIX_MODIFIER)
+            ? _$.SUFFIX_MODIFIER
+            : head;
+      const g = match.groups as Record<string, string | undefined>;
+      g.name ??= /«\s*([^»]*?)\s*»/.exec(full)?.[1];
+      g.tier ??= /\(\s*Palier\s*:\s*(\d+)\s*\)/.exec(full)?.[1];
+      g.rank ??= /\(\s*Rang\s*:\s*(\d+)\s*\)/.exec(full)?.[1];
+    }
+
     switch (match.groups!.type) {
       case _$.PREFIX_MODIFIER:
         generation = "prefix";

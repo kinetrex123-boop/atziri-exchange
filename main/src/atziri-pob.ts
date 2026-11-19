@@ -82,6 +82,12 @@ async function ninjaVersion(c: NinjaChar): Promise<number> {
       const { value, done } = await reader.read();
       if (done) break;
       text += Buffer.from(value).toString("utf8");
+      // character not in poe.ninja's database yet (new character, private
+      // profile, or never refreshed on poe.ninja)
+      if (/event:\s*notfound/.test(text)) {
+        ctrl.abort();
+        throw new Error("poe.ninja: personnage introuvable");
+      }
       const m = /data:\s*(\{[^\n]*\})/.exec(text);
       if (m) {
         ctrl.abort();
@@ -112,7 +118,7 @@ async function ninjaRefreshCharacter(
     `https://poe.ninja/poe2/api/account/refresh-character/${encodeURIComponent(c.league)}/${encodeURIComponent(c.character)}`,
     {
       method: "POST",
-      headers: { Origin: "https://poe.ninja", Referer: `https://poe.ninja/poe2/profile/${c.account}/${c.league}/character/${c.character}` },
+      headers: { Origin: "https://poe.ninja", Referer: `https://poe.ninja/poe2/profile/${encodeURIComponent(c.account)}/${encodeURIComponent(c.league)}/character/${encodeURIComponent(c.character)}` },
     },
   );
   logger.write(`info [Atziri PoB] poe.ninja refresh: ${res.status}`);

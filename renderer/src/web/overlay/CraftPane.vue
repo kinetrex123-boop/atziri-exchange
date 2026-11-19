@@ -880,7 +880,7 @@ async function confirmRemoveBase(id: number, name: string) {
   position: absolute;
   bottom: 1px;
   right: 3px;
-  font: 600 0.62rem Cinzel, serif;
+  font: 600 0.62rem "Space Grotesk", sans-serif;
   color: #cdb98f;
 }
 .cr-sl-plus {

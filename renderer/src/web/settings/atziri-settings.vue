@@ -150,6 +150,18 @@
         }}</label>
         <hotkey-input v-model="craftPauseKey" class="w-48" />
       </div>
+      <div class="flex">
+        <label class="flex-1">{{
+          tr("Prix des récompenses de runes à l'écran (Rune Rewards)", "Prices of the rune rewards on screen (Rune Rewards)")
+        }}</label>
+        <hotkey-input v-model="runeKey" class="w-48" />
+      </div>
+      <div class="flex">
+        <label class="flex-1">{{
+          tr("Tiers des 3 choix du Puits des Âmes (Well of Souls)", "Tiers of the 3 Well of Souls choices")
+        }}</label>
+        <hotkey-input v-model="wellKey" class="w-48" />
+      </div>
       <HotkeysGeneric :hotkeys="priceCheckHotkeys" />
     </div>
 
@@ -362,8 +374,8 @@
         @click="setColor(selectedField, color)"
       ></button>
     </div>
-    <button type="button" class="btn mt-3" @click="setTheme(DEFAULT_THEME, 'braise')">
-      {{ tr("Réinitialiser (Temple)", "Reset (Temple)") }}
+    <button type="button" class="btn mt-3" @click="setTheme(DEFAULT_THEME, 'bento')">
+      {{ tr("Réinitialiser (Bento)", "Reset (Bento)") }}
     </button>
 
     <!-- Background images -->
@@ -534,6 +546,7 @@ const COLOR_FIELDS: Array<{ key: keyof ThemeColors; label: string; labelEn: stri
   { key: "muted", label: "Texte secondaire", labelEn: "Secondary text" },
 ];
 const THEME_NAMES_EN: Record<string, string> = {
+  bento: "Bento",
   braise: "Temple",
   sang: "Ritual",
   violet: "Purple",
@@ -816,6 +829,8 @@ const poedbKey = configModelValue(() => itemCheck.value, "poedbKey");
 const farmKey = configModelValue(() => itemCheck.value, "atziriFarmKey");
 const pobKey = configModelValue(() => itemCheck.value, "atziriPobKey");
 const craftPauseKey = configModelValue(() => itemCheck.value, "atziriCraftPauseKey");
+const runeKey = configModelValue(() => itemCheck.value, "atziriRuneKey");
+const wellKey = configModelValue(() => itemCheck.value, "atziriWellKey");
 
 const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
   {
@@ -979,7 +994,7 @@ const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
 }
 
 .atz-palette-title {
-  font-family: "Cinzel", "Marcellus", Georgia, serif;
+  font-family: "Space Grotesk", "Inter", Georgia, serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: theme("colors.blue.400");

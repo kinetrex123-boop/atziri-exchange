@@ -1,6 +1,6 @@
 <template>
   <!-- Atziri Exchange: big price banner at the top of the price check -->
-  <div v-if="view" class="atz-hero">
+  <div v-if="view" :key="view.main + view.mainUnit" class="atz-hero">
     <div class="atz-hero-cap">
       <span>{{ view.caption }}</span>
       <span
@@ -16,12 +16,17 @@
       <img :src="view.mainIcon" class="atz-hero-cur" />
       <span class="atz-hero-unit">{{ view.mainUnit }}</span>
     </div>
-    <div v-if="view.sell" class="atz-hero-sell">
-      {{ tr("À vendre ≈", "Sell at ≈") }} <b>{{ view.sell.text }}</b>
-      <img :src="view.sell.icon" class="atz-hero-cur-sm" />
-      {{ view.sell.unit }}
+    <!-- small cells under the price: each one on a single line, never overflows -->
+    <div v-if="view.cells?.length" class="atz-hero-cells">
+      <div v-for="c in view.cells" :key="c.label" class="atz-hero-cell" :title="`${c.label} : ${c.text} ${c.unit}`">
+        <span class="atz-hero-cell-l">{{ c.label }}</span>
+        <span class="atz-hero-cell-v">
+          <b>{{ c.text }}</b>
+          <img v-if="c.icon" :src="c.icon" class="atz-hero-cur-sm" />
+        </span>
+      </div>
     </div>
-    <div v-if="view.sub" class="atz-hero-sub">{{ view.sub }}</div>
+    <div v-if="view.sub" class="atz-hero-sub" :title="view.sub">{{ view.sub }}</div>
   </div>
 </template>
 
@@ -60,38 +65,43 @@ function confidenceView(level: "low" | "medium" | "high") {
   }
 }
 
-function chaosText(div: number) {
-  const { chaos } = rates.value;
-  return chaos ? `≈ ${displayRounding(div * chaos, true, true)} Chaos` : "";
-}
 
 const view = computed(() => {
   // 1) trade search results: range of the cheapest listings
   const s = tradeSummary.value;
   if (props.tradeSearch && s) {
+    // like PoE2 MultiTool: one suggested price (median once the odd listings
+    // are left out), then the range, the quick-sale price and the cheapest
+    const main = inBestUnit(s.median);
     const low = inBestUnit(s.low);
     const high = inBestUnit(s.high);
-    const same = low.unit === high.unit;
-    const cheapest = inBestUnit(s.cheapest);
     const pl = (n: number) => (n > 1 ? "s" : "");
-    const ignored =
-      s.ignored > 0
-        ? tr(
-            ` · ${s.ignored} annonce${pl(s.ignored)} trop basse${pl(s.ignored)} ignorée${pl(s.ignored)}`,
-            ` · ${s.ignored} too cheap listing${pl(s.ignored)} ignored`,
-          )
-        : "";
+    const left: string[] = [];
+    if (s.ignored > 0)
+      left.push(tr(`${s.ignored} trop basse${pl(s.ignored)}`, `${s.ignored} too cheap`));
+    if (s.ignoredHigh > 0)
+      left.push(tr(`${s.ignoredHigh} trop chère${pl(s.ignoredHigh)}`, `${s.ignoredHigh} too expensive`));
+    const ignoredText = left.length
+      ? tr(` · ignorées : ${left.join(", ")}`, ` · left out: ${left.join(", ")}`)
+      : "";
     return {
       caption: tr(
-        `Prix estimé · ${s.count} annonce${pl(s.count)} · trade`,
-        `Estimated price · ${s.count} listing${pl(s.count)} · trade`,
+        `Prix conseillé · ${s.count} annonce${pl(s.count)}`,
+        `Suggested price · ${s.count} listing${pl(s.count)}`,
       ),
       confidence: confidenceView(s.confidence),
-      main: same && low.text !== high.text ? `${low.text} – ${high.text}` : low.text,
-      mainIcon: low.icon,
-      mainUnit: low.unit,
-      sell: inBestUnit(s.sell),
-      sub: `${tr("le moins cher", "cheapest")} ${cheapest.text} ${cheapest.unit} · ${chaosText(s.low)}${ignored}`,
+      main: main.text,
+      mainIcon: main.icon,
+      mainUnit: main.unit,
+      cells: [
+        {
+          label: tr("Fourchette", "Range"),
+          text: low.unit === high.unit && low.text !== high.text ? `${low.text} – ${high.text}` : low.text,
+          icon: low.icon,
+          unit: low.unit,
+        },
+      ],
+      sub: ignoredText ? ignoredText.replace(/^ · /, "") : "",
     };
   }
   // 2) poe.ninja price (currency, uniques, gems...)
@@ -107,7 +117,8 @@ const view = computed(() => {
         main: all.text,
         mainIcon: all.icon,
         mainUnit: all.unit + (count > 1 ? ` (×${count})` : ""),
-        sub: count > 1 ? `1 = ${one.text} ${one.unit} · ${chaosText(p.primaryValue)}` : chaosText(p.primaryValue),
+        cells: [],
+        sub: count > 1 ? `1 = ${one.text} ${one.unit}` : "",
       };
     }
   } catch {
@@ -118,9 +129,13 @@ const view = computed(() => {
 </script>
 
 <style lang="postcss">
+/* look of the price banner from before the "Bento" restyle (gold edge, dark gradient) */
 .atz-hero {
+  position: relative;
+  /* the parent is a flex column: never let it squash the banner */
+  flex: none;
   margin: 0 0 8px;
-  padding: 8px 12px;
+  padding: 8px 12px 10px;
   border: 1px solid theme("colors.blue.400");
   border-radius: 8px;
   background: linear-gradient(
@@ -129,13 +144,50 @@ const view = computed(() => {
     rgb(var(--c-gray-900) / 0.95)
   );
   box-shadow: 0 0 18px rgb(var(--c-blue-400) / 0.15);
+  animation: atz-hero-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes atz-hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atz-hero {
+    animation: none;
+  }
+}
+
+.atz-hero-cap {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: theme("colors.gray.400");
+}
+
+.atz-hero-cap > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .atz-hero-conf {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .atz-hero-dot {
@@ -157,39 +209,11 @@ const view = computed(() => {
   color: #6fc46a;
 }
 
-.atz-hero-sell {
-  margin-top: 2px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.85rem;
-  color: theme("colors.gray.300");
-}
-
-.atz-hero-sell b {
-  font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
-  color: theme("colors.blue.400");
-}
-
-.atz-hero-cur-sm {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
-.atz-hero-cap {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: theme("colors.gray.400");
-}
-
 .atz-hero-main {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   margin-top: 2px;
 }
 
@@ -199,20 +223,79 @@ const view = computed(() => {
   font-weight: 600;
   line-height: 1.1;
   color: theme("colors.gray.100");
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .atz-hero-cur {
   width: 1.6rem;
   height: 1.6rem;
+  flex: none;
+}
+
+.atz-hero-cur-sm {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
 }
 
 .atz-hero-unit {
   color: theme("colors.gray.400");
 }
 
-.atz-hero-sub {
-  font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
-  font-size: 0.75rem;
+/* Fourchette / Vente rapide / Le moins cher: one line each, never overflow */
+.atz-hero-cells {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.atz-hero-cell {
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 8px 4px;
+  border: 1px solid theme("colors.gray.700");
+  border-radius: 6px;
+  background: rgb(var(--c-gray-900) / 0.6);
+  line-height: 1.25;
+}
+
+.atz-hero-cell-l {
+  display: block;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: theme("colors.gray.400");
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atz-hero-cell-v {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  color: theme("colors.blue.400");
+
+  b {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.atz-hero-sub {
+  margin-top: 4px;
+  font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  font-size: 0.72rem;
+  color: theme("colors.gray.400");
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

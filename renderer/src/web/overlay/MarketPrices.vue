@@ -23,10 +23,12 @@
       </div>
       <div class="ar-brand">
         <img class="ar-logo" :src="brandIconUrl(brand.icon)" alt="" width="64" height="64" />
-        <h1 class="ar-h1">{{ activeTabLabel }}</h1>
+        <h1 :key="activeTabLabel" class="ar-h1">{{ activeTabLabel }}</h1>
       </div>
       <ConverterBox class="ar-converter-pos" />
-      <nav class="ar-tabs" role="tablist">
+      <nav ref="tabsNav" class="ar-tabs" role="tablist">
+        <!-- sliding underline under the open tab (style "Bento") -->
+        <span class="ar-tab-ind" :style="tabInd" aria-hidden="true"></span>
         <!-- tabs in the player's order (drag a tab to move it) -->
         <button
           v-for="tb in orderedTabs"
@@ -100,6 +102,8 @@
     <StatsPane v-show="hubTab === 'stats'" />
     <CraftPane v-show="hubTab === 'crafttrack'" />
     <HistoryPane v-if="hubTab === 'history'" />
+    <WellPane v-if="hubTab === 'well'" />
+    <RunesPane v-if="hubTab === 'runes'" />
 
     <div v-show="hubTab === 'market'" class="ar-body">
       <fieldset class="ar-nav">
@@ -283,6 +287,7 @@
 import {
   computed,
   inject,
+  nextTick,
   onMounted,
   onUnmounted,
   shallowRef,
@@ -301,6 +306,8 @@ import CraftPane from "./CraftPane.vue";
 import ConfirmBox from "./ConfirmBox.vue";
 import { brand, brandIconUrl } from "@/web/atziri-brand";
 import HistoryPane from "./HistoryPane.vue";
+import WellPane from "./WellPane.vue";
+import RunesPane from "./RunesPane.vue";
 import ConverterBox from "./ConverterBox.vue";
 import { setRates } from "./atziri-money";
 import {
@@ -514,6 +521,7 @@ const allTabs = computed<HubTabEntry[]>(() => {
     web("regexeng"),
     { id: "farm", icon: "fa-map", label: "Farm" },
     web("ninja"),
+    { id: "well", icon: "fa-skull", label: tr("Abysse", "Abyss") },
   ];
 });
 const TAB_ORDER_KEY = "atziri-tab-order";
@@ -564,6 +572,8 @@ const activeTabLabel = computed(() => {
   if (hubTab.value === "stats") return "Stats";
   if (hubTab.value === "crafttrack") return tr("Suivi craft", "Craft tracking");
   if (hubTab.value === "history") return tr("Historique", "History");
+  if (hubTab.value === "well") return "Well of Souls";
+  if (hubTab.value === "runes") return "Rune Rewards";
   return WEB_TABS.find((t) => t.id === hubTab.value)?.label ?? "";
 });
 
@@ -723,6 +733,34 @@ watch(
   },
   { immediate: true },
 );
+
+// ---- sliding underline under the open tab ----
+const tabsNav = shallowRef<HTMLElement | null>(null);
+const tabInd = shallowRef<Record<string, string>>({ width: "0px", opacity: "0" });
+function placeTabInd() {
+  const sel = tabsNav.value?.querySelector<HTMLElement>('button[aria-selected="true"]');
+  if (!sel || !sel.offsetWidth) return;
+  tabInd.value = {
+    width: `${sel.offsetWidth}px`,
+    transform: `translateX(${sel.offsetLeft}px)`,
+    opacity: "1",
+  };
+}
+watch(
+  [hubTab, () => orderedTabs.value.map((t) => t.id).join(), () => props.visible],
+  () => nextTick(placeTabInd),
+);
+let tabsResize: ResizeObserver | undefined;
+onMounted(() => {
+  nextTick(placeTabInd);
+  // fonts load late and the window can be resized: keep the line under the tab
+  document.fonts?.ready.then(placeTabInd);
+  if (tabsNav.value) {
+    tabsResize = new ResizeObserver(() => placeTabInd());
+    tabsResize.observe(tabsNav.value);
+  }
+});
+onUnmounted(() => tabsResize?.disconnect());
 
 let refreshTimer: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
@@ -1148,9 +1186,14 @@ const rows = computed(() => {
   --accent-soft: rgb(var(--c-blue-900));
   --ok: #9cc46f;
   --bad: #d9584a;
-  --display: "Cinzel", "Marcellus", Georgia, serif;
-  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  /* Atziri style "Bento" (maquette E): grotesque display, Inter body */
+  --display: "Space Grotesk", "Inter", "Segoe UI", sans-serif;
+  --body: "Inter", "IBM Plex Sans", system-ui, "Segoe UI", sans-serif;
+  --mono: "Space Grotesk", "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --radius: 12px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  font-variant-numeric: tabular-nums;
 
   position: absolute;
   top: calc(var(--atz-y, 7vh) + 0.75rem);
@@ -1169,34 +1212,45 @@ const rows = computed(() => {
 .ar-hub button {
   font: inherit;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--fg);
   padding: 8px 14px;
+  transition:
+    border-color 0.25s,
+    color 0.25s,
+    background-color 0.25s,
+    transform 0.3s var(--ease);
 }
 
 .ar-hub button:hover {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
 }
 
-/* header.top + .brand + .logo + h1 */
+.ar-hub button:active {
+  transform: scale(0.97);
+}
+
+/* header: brand on the left (logo / tab name), actions and converter on the right, tabs below */
 .ar-top {
   position: relative;
-  padding-block: 4px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding-block: 2px 0;
 }
 
 .ar-hub .ar-settings-btn {
-  position: absolute;
-  top: 4px;
-  left: 0;
+  order: 2;
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
   font-family: var(--display);
-  letter-spacing: 0.06em;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--muted);
 }
 
@@ -1218,41 +1272,58 @@ const rows = computed(() => {
 }
 
 .ar-brand {
+  order: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .ar-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 2px solid var(--accent);
-  box-shadow:
-    0 0 0 4px rgba(0, 0, 0, 0.45),
-    0 0 22px color-mix(in srgb, var(--accent) 45%, transparent);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--line);
   object-fit: cover;
   flex: none;
+  transition: transform 0.5s var(--spring);
 }
 
+.ar-brand:hover .ar-logo {
+  transform: rotate(-6deg) scale(1.06);
+}
+
+/* "Atziri / Stats" breadcrumb */
 .ar-h1 {
   font-family: var(--display);
   margin: 0;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
   font-weight: 700;
-  font-size: 1.7rem;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+  animation: atz-fade-in 0.45s var(--ease);
+}
+
+.ar-h1::before {
+  content: "Atziri";
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .ar-h1::after {
-  content: "";
-  display: block;
-  width: 120px;
-  height: 1px;
-  margin-top: 10px;
-  background: linear-gradient(90deg, var(--accent), transparent);
+  content: "/";
+  order: -1;
+  color: var(--line);
+  margin: 0 0.45em;
+  font-weight: 400;
+}
+
+.ar-h1 {
+  display: flex;
+  align-items: baseline;
+}
+
+.ar-h1::before {
+  order: -2;
 }
 
 /* new version notice */
@@ -1284,36 +1355,62 @@ const rows = computed(() => {
   color: var(--fg);
 }
 
-/* .tabs */
+/* .tabs: flat labels, a sliding accent underline marks the open tab */
 .ar-tabs {
+  order: 4;
+  flex-basis: 100%;
+  position: relative;
   display: flex;
-  gap: 4px;
-  margin-top: 14px;
+  gap: 2px;
+  margin-top: 4px;
   border-bottom: 1px solid var(--line);
+}
+
+.ar-tab-ind {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
+  pointer-events: none;
+  transition:
+    transform 0.45s var(--ease),
+    width 0.45s var(--ease);
 }
 
 .ar-hub .ar-tabs button {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
+  gap: 8px;
+  border: none;
+  border-radius: 8px 8px 0 0;
   background: transparent;
   color: var(--muted);
-  padding: 8px 16px;
+  padding: 10px 14px;
   font-family: var(--display);
-  letter-spacing: 0.06em;
-  font-size: 1.05rem;
-  margin-bottom: -1px;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.ar-hub .ar-tabs button:hover {
+  color: var(--fg);
+  background: rgb(var(--c-gray-800) / 0.5);
+}
+
+.ar-hub .ar-tabs button:active {
+  transform: none;
 }
 
 .ar-hub .ar-tabs button[aria-selected="true"] {
-  background: var(--surface);
-  border-color: var(--line);
   color: var(--fg);
-  border-bottom: 1px solid var(--surface);
+}
+
+.ar-hub .ar-tabs button[aria-selected="true"] .ar-tabfa {
+  color: var(--accent);
+  opacity: 1;
 }
 
 .ar-tabico {
@@ -1326,9 +1423,7 @@ const rows = computed(() => {
 
 /* Converter, top right of the header */
 .ar-converter-pos {
-  position: absolute;
-  top: 4px;
-  right: 0;
+  order: 3;
 }
 
 .ar-converter {
@@ -1337,7 +1432,7 @@ const rows = computed(() => {
   gap: 6px;
   padding: 4px 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface);
   font-family: var(--mono);
   font-size: 13px;
@@ -1662,23 +1757,21 @@ const rows = computed(() => {
 .ar-hub fieldset,
 .ar-main {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--surface);
   margin: 0;
-  padding: 12px 14px;
+  padding: 14px 16px;
   min-width: 0;
   /* no backdrop blur: costly without GPU acceleration */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 1px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.3s;
 }
 
 .ar-hub legend {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  opacity: 0.85;
+  font-family: var(--display);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
   padding: 0 4px;
 }
 
@@ -1709,10 +1802,24 @@ const rows = computed(() => {
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
+.ar-hub .ar-nav button {
+  border-color: transparent;
+  background: transparent;
+  border-radius: 8px;
+}
+
+.ar-hub .ar-nav button:hover {
+  background: rgb(var(--c-gray-900) / 0.6);
+  border-color: transparent;
+  transform: translateX(2px);
+}
+
 .ar-hub .ar-nav button[aria-pressed="true"] {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
+  border-color: transparent;
+  color: rgb(var(--c-gray-900));
+  background: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .ar-main {
@@ -1724,11 +1831,10 @@ const rows = computed(() => {
 
 .ar-main h2 {
   font-family: var(--display);
-  font-weight: 400;
+  font-weight: 700;
   margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+  font-size: 1.35rem;
 }
 
 .ar-sub {
@@ -1739,16 +1845,20 @@ const rows = computed(() => {
 
 .ar-search {
   font: inherit;
-  padding: 6px 8px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 10px;
   background: rgb(var(--c-gray-900) / 0.85);
   color: var(--fg);
+  transition:
+    border-color 0.25s,
+    box-shadow 0.25s;
 }
 
 .ar-search:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .ar-empty {
@@ -1780,24 +1890,42 @@ const rows = computed(() => {
   grid-template-columns: minmax(0, 1fr) 12rem 5.5rem 7rem 5.5rem;
   align-items: center;
   gap: 12px;
-  padding: 6px 10px;
+  padding: 7px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgb(var(--c-gray-900) / 0.55);
+  transition:
+    border-color 0.25s,
+    background-color 0.25s,
+    transform 0.3s var(--ease);
 }
 
 .ar-row:hover {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: rgb(var(--c-gray-800) / 0.9);
+  transform: translateX(3px);
 }
+
+/* first rows slide in one after the other when the list appears */
+.ar-list > .ar-row:nth-child(-n + 20) {
+  animation: atz-rise 0.45s var(--ease) both;
+}
+.ar-list > .ar-row:nth-child(2) { animation-delay: 30ms; }
+.ar-list > .ar-row:nth-child(3) { animation-delay: 60ms; }
+.ar-list > .ar-row:nth-child(4) { animation-delay: 90ms; }
+.ar-list > .ar-row:nth-child(5) { animation-delay: 120ms; }
+.ar-list > .ar-row:nth-child(6) { animation-delay: 150ms; }
+.ar-list > .ar-row:nth-child(7) { animation-delay: 180ms; }
+.ar-list > .ar-row:nth-child(n + 8) { animation-delay: 210ms; }
 
 .ar-row--head {
   border: none;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12.5px;
+  font-family: var(--display);
+  font-weight: 500;
   color: var(--muted);
   padding-bottom: 8px;
   margin-bottom: 6px;
@@ -1805,6 +1933,8 @@ const rows = computed(() => {
 
 .ar-row--head:hover {
   border-color: var(--line);
+  background: transparent;
+  transform: none;
 }
 
 .ar-hub .ar-sort {
@@ -1813,9 +1943,7 @@ const rows = computed(() => {
   padding: 0;
   text-align: right;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .ar-hub .ar-sort:hover {
@@ -1890,5 +2018,71 @@ const rows = computed(() => {
 .ar-spark svg {
   width: 100%;
   height: 24px;
+}
+
+/* ---- Atziri style "Bento": smooth animations ----
+   v-show restarts a CSS animation each time a tab is shown again, so every
+   pane fades in when its tab is opened and its blocks follow one by one. */
+@keyframes atz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes atz-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ar-hub > .ar-body {
+  animation: atz-fade-in 0.3s var(--ease) both;
+}
+
+.ar-hub > .ar-body:not(.ar-browser) > * {
+  animation: atz-rise 0.5s var(--ease) both;
+}
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(2) { animation-delay: 60ms; }
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(3) { animation-delay: 120ms; }
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(4) { animation-delay: 180ms; }
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(n + 5) { animation-delay: 240ms; }
+
+.ar-hub fieldset:hover,
+.ar-main:hover {
+  border-color: color-mix(in srgb, var(--fg) 14%, var(--line));
+}
+
+.ar-badge {
+  animation: atz-pop 0.5s var(--spring) both;
+}
+
+@keyframes atz-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-hub *,
+  .ar-hub *::before,
+  .ar-hub *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 </style>

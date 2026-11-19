@@ -9,7 +9,9 @@ export interface TradeSummary {
   cheapest: number; // Divine Orbs (after removing price fixers)
   low: number; // Divine Orbs (cheapest listings)
   high: number;
+  median: number; // suggested price: median of the kept listings
   ignored: number; // abnormally cheap listings left out ("price fixers")
+  ignoredHigh: number; // abnormally expensive listings left out
   confidence: Confidence;
   sell: number; // suggested price to sell, in Divine Orbs
 }
@@ -51,6 +53,19 @@ function dropPriceFixers(sorted: number[]) {
   return { kept: sorted.slice(start), ignored: start };
 }
 
+/**
+ * Like PoE2 MultiTool's suggested price: also leaves out listings far above
+ * the others (over 3 × the median), at most a third of the sample.
+ */
+function dropOverpriced(sorted: number[]) {
+  if (sorted.length < 4) return sorted;
+  const m = median(sorted);
+  const maxDrop = Math.floor(sorted.length / 3);
+  let end = sorted.length;
+  while (sorted.length - end < maxDrop && sorted[end - 1] > 3 * m) end--;
+  return sorted.slice(0, end);
+}
+
 function confidenceOf(total: number, low: number, high: number): Confidence {
   let level = total < 5 ? 0 : total < 20 ? 1 : 2;
   // prices all over the place: trust it a bit less
@@ -79,7 +94,9 @@ export function setTradeSummary(
     tradeSummary.value = null;
     return;
   }
-  const { kept, ignored } = dropPriceFixers(values);
+  const { kept: noFixers, ignored } = dropPriceFixers(values);
+  const kept = dropOverpriced(noFixers);
+  const ignoredHigh = noFixers.length - kept.length;
   const q = (p: number) =>
     kept[Math.min(kept.length - 1, Math.floor(p * (kept.length - 1)))];
   const low = q(0.25);
@@ -89,7 +106,9 @@ export function setTradeSummary(
     cheapest: kept[0],
     low,
     high,
+    median: median(kept),
     ignored,
+    ignoredHigh,
     confidence: confidenceOf(total, low, high),
     // just under the cheapest serious listing, to sell quickly
     sell: kept[0] * 0.95,

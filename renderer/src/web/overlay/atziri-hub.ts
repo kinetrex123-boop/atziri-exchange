@@ -11,6 +11,8 @@ export type HubTab =
   | "stats"
   | "crafttrack"
   | "history"
+  | "well"
+  | "runes"
   | WebTabId;
 
 export interface WebTab {
@@ -201,6 +203,10 @@ export const TAB_GROUPS: Record<string, TabView[]> = {
   ninja: [
     { tab: "ninja", icon: "fa-chart-line", fr: "poe.ninja", en: "poe.ninja" },
     { tab: "stats", icon: "fa-chart-bar", fr: "Stats", en: "Stats" },
+  ],
+  abyss: [
+    { tab: "well", icon: "fa-skull", fr: "Well of Souls", en: "Well of Souls" },
+    { tab: "runes", icon: "fa-gem", fr: "Rune Rewards", en: "Rune Rewards" },
   ],
 };
 const GROUP_KEY = "atziri-tab-groups";

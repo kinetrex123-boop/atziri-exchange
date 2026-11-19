@@ -26,7 +26,7 @@ export interface ShortcutAction {
       }
     | {
         type: "ocr-text";
-        target: "heist-gems";
+        target: "heist-gems" | "atziri-rune-rewards" | "atziri-well-reveal";
       }
     | {
         type: "trigger-event";
@@ -92,6 +92,7 @@ export type IpcEvent =
   | IpcWidgetAction
   | IpcItemText
   | IpcOcrText
+  | IpcAtziriOcr
   | IpcConfigChanged
   | IpcUserAction
   | IpcWriteToFile
@@ -200,6 +201,20 @@ type IpcOcrText = Event<
     pressTime: number;
     ocrTime: number;
     paragraphs: string[];
+  }
+>;
+
+// Atziri Exchange: text lines read on the game screen (Windows OCR), with
+// their position in game-window pixels
+type IpcAtziriOcr = Event<
+  "MAIN->CLIENT::atziri-ocr",
+  {
+    target: string;
+    status: "scanning" | "done" | "error";
+    error?: string;
+    width: number;
+    height: number;
+    lines: Array<{ t: string; x: number; y: number; w: number; h: number }>;
   }
 >;
 

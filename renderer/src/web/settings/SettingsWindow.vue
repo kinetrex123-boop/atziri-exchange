@@ -373,7 +373,7 @@ function flatJoin<T, J>(arr: T[][], joinEl: () => J) {
 }
 
 .backBtn {
-  font-family: "Cinzel", "Marcellus", Georgia, serif;
+  font-family: "Space Grotesk", "Inter", Georgia, serif;
   letter-spacing: 0.06em;
   white-space: nowrap;
   color: rgb(var(--c-blue-400));

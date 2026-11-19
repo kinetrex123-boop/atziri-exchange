@@ -476,13 +476,67 @@ function onScroll() {
     Math.round(strip.value.scrollLeft / cardStep()),
   );
 }
-// mouse wheel scrolls sideways (except inside the notes)
-function onWheel(e: WheelEvent) {
-  if ((e.target as HTMLElement).closest("textarea") || !strip.value) return;
-  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-    strip.value.scrollLeft += e.deltaY;
-    e.preventDefault();
+// mouse wheel: the strip glides left / right continuously, like dragging the
+// scrollbar, then settles on the nearest card (also over the image and the
+// notes, unless the notes are long enough to scroll themselves)
+const WHEEL_SPEED = 1.6; // pixels moved per wheel pixel
+const GLIDE = 0.16; // share of the remaining distance covered each frame
+let glideTarget = 0;
+let glideFrame = 0;
+let settleTimer: ReturnType<typeof setTimeout> | undefined;
+function maxScroll() {
+  return strip.value ? strip.value.scrollWidth - strip.value.clientWidth : 0;
+}
+function glide() {
+  const el = strip.value;
+  if (!el) return;
+  const diff = glideTarget - el.scrollLeft;
+  if (Math.abs(diff) < 1.5) {
+    el.scrollLeft = glideTarget;
+    glideFrame = 0;
+    if (settleTimer === undefined) el.style.scrollSnapType = "";
+    return;
   }
+  // at least 1 px per frame: scrollLeft can be rounded to whole pixels
+  const before = el.scrollLeft;
+  el.scrollLeft += Math.sign(diff) * Math.max(1, Math.abs(diff * GLIDE));
+  if (el.scrollLeft === before) glideTarget = before; // edge reached
+  glideFrame = requestAnimationFrame(glide);
+}
+function onWheel(e: WheelEvent) {
+  const el = strip.value;
+  if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+  const notes = (e.target as HTMLElement).closest("textarea");
+  if (notes && notes.scrollHeight > notes.clientHeight + 2) {
+    const atTop = notes.scrollTop <= 0;
+    const atBottom = notes.scrollTop + notes.clientHeight >= notes.scrollHeight - 2;
+    if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
+  }
+  e.preventDefault();
+  // a wheel "line" (old mice) is about 40 px
+  const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+  if (!glideFrame) glideTarget = el.scrollLeft;
+  el.style.scrollSnapType = "none"; // snapping would fight the glide
+  glideTarget = Math.min(Math.max(glideTarget + delta * WHEEL_SPEED, 0), maxScroll());
+  if (!glideFrame) glideFrame = requestAnimationFrame(glide);
+  // once the wheel stops, finish the glide on the nearest card
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => {
+    settleTimer = undefined;
+    const step = cardStep();
+    glideTarget = Math.min(Math.round(glideTarget / step) * step, maxScroll());
+    if (!glideFrame) glideFrame = requestAnimationFrame(glide);
+  }, 140);
+}
+onUnmounted(() => {
+  cancelAnimationFrame(glideFrame);
+  clearTimeout(settleTimer);
+});
+function goTo(index: number) {
+  if (!strip.value) return;
+  const i = Math.min(Math.max(index, 0), Math.max(setups.value.length - 1, 0));
+  current.value = i;
+  strip.value.scrollTo({ left: i * cardStep(), behavior: "smooth" });
 }
 
 // ---- links ----

@@ -11,6 +11,10 @@ export interface ItemCheckWidget extends Widget {
   atziriPobKey?: string | null;
   // Atziri Exchange: pauses / resumes the click counter of the "Suivi craft" tab
   atziriCraftPauseKey?: string | null;
+  // Atziri Exchange: reads the rune rewards on screen and shows their prices
+  atziriRuneKey?: string | null;
+  // Atziri Exchange: reads the 3 Well of Souls choices and shows their tiers
+  atziriWellKey?: string | null;
   craftOfExileKey: string | null;
   stashSearchKey: string | null;
   samePricedKey: string | null;

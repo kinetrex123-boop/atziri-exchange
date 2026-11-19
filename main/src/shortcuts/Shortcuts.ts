@@ -10,6 +10,7 @@ import { WidgetAreaTracker } from "../windowing/WidgetAreaTracker";
 import { HostClipboard } from "./HostClipboard";
 import { OcrWorker } from "../vision/link-main";
 import { isCraftArmed } from "../atziri-craft";
+import { AtziriOcr } from "../atziri-ocr";
 import type { ShortcutAction } from "../../../ipc/types";
 import type { Logger } from "../RemoteLogger";
 import type { OverlayWindow } from "../windowing/OverlayWindow";
@@ -28,6 +29,8 @@ export class Shortcuts {
   private logKeys = false;
   private areaTracker: WidgetAreaTracker;
   private clipboard: HostClipboard;
+  private atziriOcr = new AtziriOcr();
+  private language = "en";
 
   static async create(
     logger: Logger,
@@ -94,6 +97,14 @@ export class Shortcuts {
     // Atziri Exchange: "Suivi craft" tab, Shift + left click in the game
     // counts one use of the armed currency
     uIOhook.on("mousedown", (e) => {
+      // Rune Rewards: a click in the game removes the prices
+      if (this.runePricesShown) {
+        this.runePricesShown = false;
+        this.server.sendEventTo("broadcast", {
+          name: "MAIN->CLIENT::widget-action",
+          payload: { target: "atziri-rune-hide" },
+        });
+      }
       if (e.button !== 1 || !e.shiftKey || !isCraftArmed() || !this.poeWindow.isActive) return;
       this.server.sendEventTo("broadcast", {
         name: "MAIN->CLIENT::widget-action",
@@ -129,6 +140,7 @@ export class Shortcuts {
     this.logKeys = logKeys;
     this.clipboard.updateOptions(restoreClipboard);
     this.ocrWorker.updateOptions(language);
+    this.language = language;
 
     const copyItemShortcut = mergeTwoHotkeys(
       "Ctrl + C",
@@ -262,6 +274,15 @@ export class Shortcuts {
             );
           } else if (
             entry.action.type === "ocr-text" &&
+            (entry.action.target === "atziri-rune-rewards" ||
+              entry.action.target === "atziri-well-reveal")
+          ) {
+            // Atziri Exchange: read the screen (rune rewards, Well of Souls
+            // choices), the overlay adds prices / tiers next to the lines
+            if (process.platform !== "win32") return;
+            this.scanRuneRewards(entry.action.target);
+          } else if (
+            entry.action.type === "ocr-text" &&
             entry.action.target === "heist-gems"
           ) {
             if (process.platform !== "win32") return;
@@ -305,6 +326,66 @@ export class Shortcuts {
 
   private unregister() {
     globalShortcut.unregisterAll();
+  }
+
+  private scanBusy = false;
+  private runePricesShown = false;
+  private scanRuneRewards(target: string) {
+    if (this.scanBusy) return;
+    const bounds = this.poeWindow.bounds;
+    if (!bounds?.width || !bounds?.height) return;
+    this.scanBusy = true;
+    const send = (payload: {
+      status: "scanning" | "done" | "error";
+      error?: string;
+      lines: Array<{ t: string; x: number; y: number; w: number; h: number }>;
+    }) =>
+      this.server.sendEventTo("broadcast", {
+        name: "MAIN->CLIENT::atziri-ocr",
+        payload: {
+          target,
+          width: bounds.width,
+          height: bounds.height,
+          ...payload,
+        },
+      });
+    // badges of a previous scan must not be in the screenshot: hide them and
+    // let the overlay redraw before taking it
+    const hadBadges = this.runePricesShown;
+    if (hadBadges) {
+      this.runePricesShown = false;
+      this.server.sendEventTo("broadcast", {
+        name: "MAIN->CLIENT::widget-action",
+        payload: { target: "atziri-rune-hide" },
+      });
+    }
+    new Promise<Buffer>((resolve, reject) => {
+      setTimeout(
+        () => {
+          try {
+            resolve(this.poeWindow.screenshot());
+          } catch (e) {
+            reject(e);
+          }
+        },
+        hadBadges ? 180 : 0,
+      );
+    })
+      .then((image) => {
+        send({ status: "scanning", lines: [] });
+        return this.atziriOcr.recognize(image, bounds.width, bounds.height, this.language);
+      })
+      .then((lines) => {
+        send({ status: "done", lines });
+        this.runePricesShown = true;
+      })
+      .catch((e: Error) => {
+        this.logger.write(`error [Screen reading] ${e.message}`);
+        send({ status: "error", error: e.message, lines: [] });
+      })
+      .finally(() => {
+        this.scanBusy = false;
+      });
   }
 }
 

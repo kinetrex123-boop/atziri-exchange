@@ -25,25 +25,26 @@ const emit = defineEmits<{
 
 <style lang="postcss" module>
 .titlebar {
-  @apply bg-gray-900 text-blue-400;
-  font-family: "Cinzel", "Marcellus", Fontin, Georgia, serif;
+  @apply bg-gray-900 text-gray-200;
+  font-family: "Space Grotesk", "Inter", Fontin, Georgia, serif;
+  font-weight: 600;
   border-bottom: 1px solid theme("colors.gray.700");
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 1.5rem;
-  line-height: 1.5rem;
+  height: 1.75rem;
+  line-height: 1.75rem;
 
   button {
     @apply px-2 pt-px;
+    border-radius: 6px;
+    transition:
+      color 0.2s,
+      background-color 0.2s;
 
     &:hover {
-      @apply text-blue-300;
-      background: linear-gradient(
-        to top,
-        theme("colors.gray.900"),
-        theme("colors.accent.soft")
-      );
+      @apply text-blue-400;
+      background: theme("colors.gray.800");
     }
 
     &.close:hover {

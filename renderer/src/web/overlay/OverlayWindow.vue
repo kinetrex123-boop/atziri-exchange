@@ -54,6 +54,9 @@
     >
     <loading-animation />
     <PobComparePanel />
+    <!-- Rune Rewards: prices next to the rewards read on screen -->
+    <RuneBadges v-if="!active && !hideUI" />
+    <WellRevealBadges v-if="!active && !hideUI" />
     <!-- Suivi craft: counter of the armed currency, while playing -->
     <CraftMini v-if="!active && !hideUI" />
     <div
@@ -108,7 +111,11 @@ import MarketPrices from "./MarketPrices.vue";
 import { initFarmCapture } from "./atziri-farm-capture";
 import PobComparePanel from "./PobComparePanel.vue";
 import CraftMini from "./CraftMini.vue";
+import RuneBadges from "./RuneBadges.vue";
+import WellRevealBadges from "./WellRevealBadges.vue";
+import { initWellReveal, wellReveal, hideWellReveal } from "./atziri-well-reveal";
 import { initCraftCapture, armedEntry } from "./atziri-craft";
+import { initRuneRewards, runeScan, hideRuneScan } from "./atziri-runes";
 import {
   initPobCompare,
   pobCompareState,
@@ -124,6 +131,8 @@ export default defineComponent({
     MarketPrices,
     PobComparePanel,
     CraftMini,
+    RuneBadges,
+    WellRevealBadges,
   },
   setup() {
     usePoeninja();
@@ -133,6 +142,8 @@ export default defineComponent({
     initFarmCapture();
     initPobCompare();
     initCraftCapture();
+    initRuneRewards();
+    initWellReveal();
 
     const active = shallowRef(!Host.isElectron);
     const gameFocused = shallowRef(false);
@@ -176,6 +187,10 @@ export default defineComponent({
     Host.onEvent("MAIN->OVERLAY::focus-change", (state) => {
       active.value = state.overlay;
       if (!state.overlay) closePobCompare();
+      if (state.overlay) {
+        hideRuneScan();
+        hideWellReveal();
+      }
       gameFocused.value = state.game;
 
       if (active.value === false) {
@@ -322,6 +337,8 @@ export default defineComponent({
       if (showEditingNotification.value) return true;
       if (AppConfig().logKeys) return true;
       if (armedEntry.value && !hideUI.value) return true;
+      if (runeScan.value && !hideUI.value) return true;
+      if (wellReveal.value && !hideUI.value) return true;
 
       return visibilityState.value.some((w) => w.isVisible);
     });

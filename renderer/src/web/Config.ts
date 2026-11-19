@@ -152,6 +152,16 @@ export function atziriMigrations() {
     itemCheck.atziriCraftPauseKey = "Ctrl + Alt + C";
     saveConfig();
   }
+  // Rune Rewards: prices of the rewards shown on screen, Alt + R by default
+  if (itemCheck && itemCheck.atziriRuneKey === undefined) {
+    itemCheck.atziriRuneKey = "Alt + R";
+    saveConfig();
+  }
+  // Well of Souls: tiers of the 3 choices on screen, Alt + W by default
+  if (itemCheck && itemCheck.atziriWellKey === undefined) {
+    itemCheck.atziriWellKey = "Alt + W";
+    saveConfig();
+  }
 }
 
 export function poeWebApi() {
@@ -811,6 +821,20 @@ function getConfigForHost(): HostConfig {
     actions.push({
       shortcut: itemCheck.atziriCraftPauseKey,
       action: { type: "trigger-event", target: "atziri-craft-pause" },
+    });
+  }
+  if (itemCheck.atziriRuneKey) {
+    actions.push({
+      shortcut: itemCheck.atziriRuneKey,
+      keepModKeys: true,
+      action: { type: "ocr-text", target: "atziri-rune-rewards" },
+    });
+  }
+  if (itemCheck.atziriWellKey) {
+    actions.push({
+      shortcut: itemCheck.atziriWellKey,
+      keepModKeys: true,
+      action: { type: "ocr-text", target: "atziri-well-reveal" },
     });
   }
   if (itemCheck.atziriFarmKey) {
