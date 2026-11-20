@@ -20,8 +20,12 @@ export interface FarmSession {
   title: string;
   invested: number;
   maps: FarmMap[];
-  elapsedMs: number; // session timer, paused part
-  runningSince: number | null;
+  /** map of the current run (moved on by the "Run suivante" button) */
+  currentMapId?: number | null;
+  // timer of the first versions, no longer used: the session time is now
+  // the sum of the time spent inside the maps
+  elapsedMs?: number;
+  runningSince?: number | null;
 }
 
 interface FarmState {
@@ -47,13 +51,13 @@ function emptyMap(): FarmMap {
 }
 
 export function newSession(title: string, count = 5): FarmSession {
+  const maps = Array.from({ length: count }, emptyMap);
   return {
     id: newId(),
     title,
     invested: 0,
-    maps: Array.from({ length: count }, emptyMap),
-    elapsedMs: 0,
-    runningSince: null,
+    maps,
+    currentMapId: maps[0].id,
   };
 }
 
@@ -107,18 +111,32 @@ function cur(s: FarmState) {
   return s.sessions.find((x) => x.id === s.currentId) ?? s.sessions[0];
 }
 
-/** The map waiting to be filled: first one without divines */
+/**
+ * The map of the current run: the one chosen by "Run suivante" (sessions of
+ * the first versions: the first map without divines).
+ */
 function waitingMap(sess: FarmSession, create = true): FarmMap | undefined {
-  let m = sess.maps.find((x) => x.divines == null);
+  let m =
+    sess.maps.find((x) => x.id === sess.currentMapId) ??
+    sess.maps.find((x) => x.divines == null);
   if (!m && create) {
     m = emptyMap();
     sess.maps.push(m);
   }
+  if (m) sess.currentMapId = m.id;
   return m;
 }
 
 export function waitingMapId(sess: FarmSession) {
-  return sess.maps.find((x) => x.divines == null)?.id;
+  return (
+    sess.maps.find((x) => x.id === sess.currentMapId) ??
+    sess.maps.find((x) => x.divines == null)
+  )?.id;
+}
+
+/** true while the time of a map is counted */
+export function timerRunning(sess: FarmSession) {
+  return sess.maps.some((m) => m.enteredAt != null);
 }
 
 // ---- totals ----
@@ -126,8 +144,8 @@ export function totals(sess: FarmSession, now: number) {
   const done = sess.maps.filter((m) => m.divines != null);
   const gained = done.reduce((a, m) => a + (m.divines ?? 0), 0);
   const profit = gained - sess.invested;
-  const elapsed =
-    sess.elapsedMs + (sess.runningSince ? now - sess.runningSince : 0);
+  // session time = time spent inside the maps only
+  const elapsed = sess.maps.reduce((a, m) => a + mapTime(m, now), 0);
   const hours = elapsed / 3600000;
   return {
     done: done.length,
@@ -203,16 +221,38 @@ export function setMapName(id: number, name: string) {
   });
 }
 
-/** Divines gained by a map: filling it closes its timer */
+/** Divines gained by a map (the next run starts only with "Run suivante") */
 export function setMapDivines(id: number, value: number | null) {
   update((s) => {
     const m = cur(s).maps.find((x) => x.id === id);
     if (!m) return;
     m.divines = value != null && Number.isFinite(value) ? value : null;
-    if (m.divines != null && m.enteredAt) {
-      m.timeMs += Date.now() - m.enteredAt;
+  });
+}
+
+/**
+ * "Run suivante" button: the current map is finished, the next line becomes
+ * the current run (created if needed). Still inside a map: the time goes on
+ * on the new line.
+ */
+export function nextRun() {
+  update((s) => {
+    const sess = cur(s);
+    const now = Date.now();
+    const m = waitingMap(sess)!;
+    const running = m.enteredAt != null;
+    if (m.enteredAt) {
+      m.timeMs += now - m.enteredAt;
       m.enteredAt = null;
     }
+    const i = sess.maps.indexOf(m);
+    let next = sess.maps[i + 1];
+    if (!next) {
+      next = emptyMap();
+      sess.maps.push(next);
+    }
+    sess.currentMapId = next.id;
+    if (running) next.enteredAt = now;
   });
 }
 
@@ -236,23 +276,32 @@ export function addLoot(label: string) {
   });
 }
 
+/** Start / Pause by hand: counts the time of the current map */
 export function toggleTimer() {
   update((s) => {
     const sess = cur(s);
-    if (sess.runningSince) {
-      sess.elapsedMs += Date.now() - sess.runningSince;
-      sess.runningSince = null;
+    const now = Date.now();
+    if (timerRunning(sess)) {
+      for (const m of sess.maps) {
+        if (m.enteredAt) {
+          m.timeMs += now - m.enteredAt;
+          m.enteredAt = null;
+        }
+      }
     } else {
-      sess.runningSince = Date.now();
+      waitingMap(sess)!.enteredAt = now;
     }
   });
 }
 
+/** Back to zero: the times of all the maps of the session */
 export function resetTimer() {
   update((s) => {
-    const sess = cur(s);
-    sess.elapsedMs = 0;
-    sess.runningSince = sess.runningSince ? Date.now() : null;
+    const now = Date.now();
+    for (const m of cur(s).maps) {
+      m.timeMs = 0;
+      if (m.enteredAt) m.enteredAt = now;
+    }
   });
 }
 
@@ -283,9 +332,7 @@ export function handleFarmLogEvent(e: ClientLogEvent) {
     if (isMapZone(e.zone)) {
       inMapSince = now;
       update((s) => {
-        const sess = cur(s);
-        if (!sess.runningSince) sess.runningSince = now;
-        const m = waitingMap(sess)!;
+        const m = waitingMap(cur(s))!;
         if (!m.enteredAt) m.enteredAt = now;
         if (!m.name) {
           m.name = prettyZone(e.zone);
