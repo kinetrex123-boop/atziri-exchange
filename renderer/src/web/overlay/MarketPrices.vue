@@ -101,6 +101,7 @@
     <FarmSetupPane v-show="hubTab === 'farm' && farmView === 'setup'" />
     <StatsPane v-show="hubTab === 'stats'" />
     <CraftPane v-show="hubTab === 'crafttrack'" />
+    <CraftMethodsPane v-show="hubTab === 'methods'" />
     <HistoryPane v-if="hubTab === 'history'" />
     <WellPane v-if="hubTab === 'well'" />
     <RunesPane v-if="hubTab === 'runes'" />
@@ -303,6 +304,7 @@ import FarmPane from "./FarmPane.vue";
 import FarmSetupPane from "./FarmSetupPane.vue";
 import StatsPane from "./StatsPane.vue";
 import CraftPane from "./CraftPane.vue";
+import CraftMethodsPane from "./CraftMethodsPane.vue";
 import ConfirmBox from "./ConfirmBox.vue";
 import { brand, brandIconUrl } from "@/web/atziri-brand";
 import HistoryPane from "./HistoryPane.vue";
@@ -571,6 +573,7 @@ const activeTabLabel = computed(() => {
   if (hubTab.value === "farm") return "Farm";
   if (hubTab.value === "stats") return "Stats";
   if (hubTab.value === "crafttrack") return tr("Suivi craft", "Craft tracking");
+  if (hubTab.value === "methods") return tr("Méthodes de craft", "Craft methods");
   if (hubTab.value === "history") return tr("Historique", "History");
   if (hubTab.value === "well") return "Well of Souls";
   if (hubTab.value === "runes") return "Rune Rewards";

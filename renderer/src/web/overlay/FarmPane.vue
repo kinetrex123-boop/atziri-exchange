@@ -38,6 +38,20 @@
           <i class="fas fa-trash"></i>
         </button>
         <span class="fm-sp"></span>
+        <button
+          type="button"
+          class="fm-btn fm-next"
+          :title="
+            tr(
+              'Map terminée : la ligne suivante devient la run en cours',
+              'Map done: the next line becomes the current run',
+            )
+          "
+          @click="nextRun"
+        >
+          <i class="fas fa-forward"></i> {{ tr("Run suivante", "Next run") }}
+        </button>
+        <span class="fm-sp"></span>
         <span class="fm-cap">{{ tr("Chrono auto", "Auto timer") }}</span>
         <button
           type="button"
@@ -46,8 +60,8 @@
           :title="
             farm.autoTimer
               ? tr(
-                  'Chrono auto activé : démarre à l\'entrée en map (clic pour couper)',
-                  'Auto timer on: starts when you enter a map (click to turn off)',
+                  'Chrono auto activé : compte seulement le temps passé dans les maps (clic pour couper)',
+                  'Auto timer on: counts only the time spent inside maps (click to turn off)',
                 )
               : tr('Chrono auto coupé (clic pour activer)', 'Auto timer off (click to turn on)')
           "
@@ -55,16 +69,20 @@
         >
           <i class="fas fa-stopwatch"></i>
         </button>
-        <span class="fm-chrono">{{ clock(t.elapsed) }}</span>
+        <span
+          class="fm-chrono"
+          :title="tr('Temps total passé dans les maps', 'Total time spent inside maps')"
+          >{{ clock(t.elapsed) }}</span
+        >
         <button type="button" class="fm-btn" @click="toggleTimer">
-          <i :class="sess.runningSince ? 'fas fa-pause' : 'fas fa-play'"></i>
-          {{ sess.runningSince ? tr("Pause", "Pause") : tr("Démarrer", "Start") }}
+          <i :class="running ? 'fas fa-pause' : 'fas fa-play'"></i>
+          {{ running ? tr("Pause", "Pause") : tr("Démarrer", "Start") }}
         </button>
         <button
           type="button"
           class="fm-btn"
-          :title="tr('Remettre le chrono à zéro', 'Reset the timer')"
-          @click="resetTimer"
+          :title="tr('Remettre à zéro le temps de toutes les maps', 'Reset the time of all maps')"
+          @click="confirmReset"
         >
           <i class="fas fa-undo"></i>
         </button>
@@ -74,16 +92,16 @@
             <b>{{ tr("Journal de farm", "Farm journal") }}</b>
             <template v-if="isFr">
               <br />1. Indique tes divines investies (waystones, tablettes…).
-              <br />2. Lance une map : avec le chrono auto ⏱, sa ligne démarre seule et prend le nom de la map.
+              <br />2. Lance une map : avec le chrono auto ⏱, sa ligne compte le temps passé dans la map (pas au repaire) et prend son nom.
               <br />3. Survole un loot en jeu et fais <b>{{ lootKey }}</b> : il s'ajoute aux loots de la map en cours.
-              <br />4. De retour au repaire, tape les divines gagnées : la map suivante attend.
+              <br />4. Tape les divines gagnées, puis <b>Run suivante</b> pour passer à la ligne suivante.
               <br />« + Ajouter » crée d'autres maps, « Exporter » ouvre le tableau dans Excel.
             </template>
             <template v-else>
               <br />1. Enter the divines you invested (waystones, tablets…).
-              <br />2. Run a map: with the auto timer ⏱ its line starts by itself and takes the map name.
+              <br />2. Run a map: with the auto timer ⏱ its line counts the time spent inside the map (not in the hideout) and takes its name.
               <br />3. Hover a loot in game and press <b>{{ lootKey }}</b>: it is added to the current map.
-              <br />4. Back in your hideout, type the divines gained: the next map waits.
+              <br />4. Type the divines gained, then <b>Next run</b> to move to the next line.
               <br />"+ Add" creates more maps, "Export" opens the table in Excel.
             </template>
           </span>
@@ -118,8 +136,8 @@
           />
         </div>
         <div class="fm-kpi">
-          <span class="fm-cap">{{ tr("Par heure", "Per hour") }}</span>
-          <b>{{ t.perHour == null ? "—" : num(t.perHour) }}</b>
+          <span class="fm-cap">{{ tr("Temps en map", "Time in maps") }}</span>
+          <b :title="tr('Total du temps passé dans les maps de la session', 'Total time spent inside the maps of the session')">{{ clock(t.elapsed) }}</b>
         </div>
         <div class="fm-kpi">
           <span class="fm-cap">{{ tr("Investi / map", "Invested / map") }}</span>
@@ -273,6 +291,8 @@ import {
   setMapLoots,
   toggleTimer,
   resetTimer,
+  nextRun,
+  timerRunning,
   setAutoTimer,
   exportCsv,
 } from "./atziri-farm";
@@ -297,6 +317,7 @@ onUnmounted(() => clearInterval(timer));
 
 const t = computed(() => totals(sess.value, now.value));
 const waitingId = computed(() => waitingMapId(sess.value));
+const running = computed(() => timerRunning(sess.value));
 const openLoots = shallowRef<number | null>(null);
 const addCount = shallowRef(5);
 const renaming = shallowRef(false);
@@ -391,6 +412,18 @@ function doRename() {
   renameSession(renameText.value);
   renaming.value = false;
 }
+async function confirmReset() {
+  if (
+    await askConfirm(
+      tr(
+        "Remettre à zéro le temps de toutes les maps de cette session ?",
+        "Reset the time of all the maps of this session?",
+      ),
+    )
+  ) {
+    resetTimer();
+  }
+}
 async function confirmDelete() {
   if (
     await askConfirm(
@@ -456,6 +489,10 @@ async function confirmDelete() {
 .fm-danger:hover {
   border-color: #d9584a;
   color: #d9584a;
+}
+.fm-wrap .fm-next {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .fm-cap {
   font-size: 0.68rem;
