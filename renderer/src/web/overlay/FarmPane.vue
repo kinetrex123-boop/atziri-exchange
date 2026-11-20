@@ -136,8 +136,8 @@
           />
         </div>
         <div class="fm-kpi">
-          <span class="fm-cap">{{ tr("Par heure", "Per hour") }}</span>
-          <b>{{ t.perHour == null ? "—" : num(t.perHour) }}</b>
+          <span class="fm-cap">{{ tr("Temps en map", "Time in maps") }}</span>
+          <b :title="tr('Total du temps passé dans les maps de la session', 'Total time spent inside the maps of the session')">{{ clock(t.elapsed) }}</b>
         </div>
         <div class="fm-kpi">
           <span class="fm-cap">{{ tr("Investi / map", "Invested / map") }}</span>
