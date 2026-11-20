@@ -24,12 +24,18 @@ export interface BoardItem {
   imageId: number | null;
 }
 
+export interface MethodLink {
+  id: number;
+  name: string;
+  url: string;
+}
+
 export interface CraftMethod {
   id: number;
   catId: number;
   name: string;
   icon: string;
-  url: string;
+  links: MethodLink[];
   locked: boolean;
   items: BoardItem[];
 }
@@ -94,6 +100,22 @@ function cleanItem(raw: Raw): BoardItem | null {
   };
 }
 
+function cleanLinks(m: Raw): MethodLink[] {
+  if (Array.isArray(m.links)) {
+    return m.links
+      .filter((l: Raw) => l && typeof l.url === "string" && l.url)
+      .map((l: Raw, i: number) => ({
+        id: typeof l.id === "number" ? l.id : i + 1,
+        name: str(l.name, "Base"),
+        url: l.url,
+      }));
+  }
+  // first version: one link without a name
+  return typeof m.url === "string" && m.url
+    ? [{ id: 1, name: "Base", url: m.url }]
+    : [];
+}
+
 function clean(raw: Raw): MethodsData {
   if (!raw || typeof raw !== "object" || !Array.isArray(raw.categories))
     return defaults();
@@ -108,7 +130,7 @@ function clean(raw: Raw): MethodsData {
       catId: m.catId,
       name: str(m.name, "?"),
       icon: str(m.icon, "armour"),
-      url: str(m.url),
+      links: cleanLinks(m),
       locked: m.locked === true,
       items: (Array.isArray(m.items) ? m.items : [])
         .map(cleanItem)
@@ -193,7 +215,7 @@ export function addMethod(catId: number, name: string, icon: string): number {
     catId,
     name,
     icon,
-    url: "",
+    links: [],
     locked: false,
     items: [],
   };

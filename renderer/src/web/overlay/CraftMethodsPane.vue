@@ -115,7 +115,7 @@
               /></span>
               <b class="cr-bname">{{ m.name }}</b>
               <i
-                v-if="m.url"
+                v-if="m.links.length"
                 class="fas fa-link cm-has"
                 :title="tr('Lien trade enregistré', 'Trade link saved')"
               ></i>
@@ -252,83 +252,126 @@
           </button>
         </div>
 
-        <!-- trade link of the base -->
-        <div class="cm-link">
-          <span class="fm-cap">{{ tr("Base trade", "Trade base") }}</span>
-          <template v-if="method.locked">
-            <a
-              v-if="method.url"
-              class="cm-url"
-              href="#"
-              :title="
-                tr('Ouvrir dans l\'onglet Trade', 'Open in the Trade tab')
-              "
-              @click.prevent="openTrade"
-              >{{ method.url }}</a
+        <!-- trade links (same as the "Bases à crafter" of Suivi) -->
+        <div class="cr-panel cm-links">
+          <div class="fm-head">
+            <span class="fm-cap">{{ tr("Liens trade", "Trade links") }}</span>
+            <span class="fm-sp"></span>
+            <button
+              v-if="!method.locked && !linkForm"
+              type="button"
+              class="fm-btn"
+              @click="startAddLink"
             >
-            <span v-else class="fm-muted cm-url">{{
-              tr(
-                "Aucun lien (déverrouille la page pour en coller un)",
-                "No link (unlock the page to paste one)",
-              )
+              + {{ tr("Coller un lien trade", "Paste a trade link") }}
+            </button>
+          </div>
+          <div v-if="method.links.length" class="cr-bases">
+            <div v-for="l in method.links" :key="l.id" class="cr-base">
+              <span class="cr-bi"
+                ><img :src="baseIcon(method.icon).img" alt=""
+              /></span>
+              <b class="cr-bname" :title="l.name">{{ l.name }}</b>
+              <button
+                type="button"
+                class="fm-btn cr-done"
+                :title="
+                  tr('Ouvrir dans l\'onglet Trade', 'Open in the Trade tab')
+                "
+                @click="openInHub(l.url, 'trade')"
+              >
+                {{ tr("Ouvrir", "Open") }}
+                <i class="fas fa-external-link-alt"></i>
+              </button>
+              <template v-if="!method.locked">
+                <button
+                  type="button"
+                  class="cr-x"
+                  :title="tr('Modifier', 'Edit')"
+                  @click="startEditLink(l)"
+                >
+                  <i class="fas fa-pen"></i>
+                </button>
+                <button
+                  type="button"
+                  class="cr-x"
+                  :title="tr('Supprimer', 'Delete')"
+                  @click="confirmRemoveLink(l)"
+                >
+                  ✕
+                </button>
+              </template>
+            </div>
+          </div>
+          <p v-else-if="!linkForm" class="fm-muted">
+            {{
+              method.locked
+                ? tr(
+                    "Aucun lien : déverrouille la page pour en ajouter.",
+                    "No link: unlock the page to add one.",
+                  )
+                : tr(
+                    "Colle ici le lien trade de ta base : « Ouvrir » relance la recherche dans l'onglet Trade.",
+                    'Paste the trade link of your base here: "Open" runs the search again in the Trade tab.',
+                  )
+            }}
+          </p>
+          <div v-if="linkForm && !method.locked" class="cr-form">
+            <span class="fm-cap">{{
+              linkForm.id
+                ? tr("Modifier le lien", "Edit the link")
+                : tr("Nouveau lien", "New link")
             }}</span>
-          </template>
-          <input
-            v-else
-            v-model.trim="urlText"
-            class="ar-search cm-url"
-            :placeholder="
-              tr(
-                'Lien trade : https://www.pathofexile.com/trade2/search/…',
-                'Trade link: https://www.pathofexile.com/trade2/search/…',
-              )
-            "
-            @change="saveUrl"
-            @keydown.enter="saveUrl"
-          />
-          <span v-if="urlError" class="cr-err">{{ urlError }}</span>
-          <template v-if="!method.locked">
-            <button
-              type="button"
-              class="fm-btn"
-              :title="tr('Coller le lien copié', 'Paste the copied link')"
-              @click="pasteUrl"
-            >
-              <i class="fas fa-paste"></i> {{ tr("Coller", "Paste") }}
-            </button>
-            <button
-              v-if="isTradeUrl(currentTrade)"
-              type="button"
-              class="fm-btn"
-              :title="
-                tr(
-                  'Prendre la recherche affichée dans l\'onglet Trade',
-                  'Use the search shown in the Trade tab',
-                )
+            <div class="fm-head cr-mt">
+              <input
+                ref="linkUrlEl"
+                v-model.trim="linkForm.url"
+                class="ar-search cm-grow"
+                :placeholder="
+                  tr(
+                    'Lien trade : https://www.pathofexile.com/trade2/search/…',
+                    'Trade link: https://www.pathofexile.com/trade2/search/…',
+                  )
+                "
+                @keydown.enter="saveLink"
+                @keydown.esc="linkForm = null"
+              />
+              <button
+                v-if="isTradeUrl(currentTrade)"
+                type="button"
+                class="fm-btn"
+                :title="
+                  tr(
+                    'Prendre la recherche affichée dans l\'onglet Trade',
+                    'Use the search shown in the Trade tab',
+                  )
+                "
+                @click="linkForm.url = currentTrade"
+              >
+                <i class="fas fa-balance-scale"></i>
+                {{ tr("Page Trade ouverte", "Open Trade page") }}
+              </button>
+            </div>
+            <input
+              v-model="linkForm.name"
+              class="ar-search cr-mt"
+              :placeholder="
+                tr('Nom (ex. Arc ilvl 82)', 'Name (e.g. Bow ilvl 82)')
               "
-              @click="useCurrentTrade"
-            >
-              <i class="fas fa-balance-scale"></i>
-              {{ tr("Page Trade ouverte", "Open Trade page") }}
-            </button>
-          </template>
-          <button
-            v-if="method.url"
-            type="button"
-            class="fm-btn"
-            :title="tr('Copier le lien', 'Copy the link')"
-            @click="copyUrl"
-          >
-            <i class="fas fa-copy"></i>
-          </button>
-          <button
-            v-if="method.url"
-            type="button"
-            class="fm-btn cr-done"
-            @click="openTrade"
-          >
-            {{ tr("Ouvrir", "Open") }} <i class="fas fa-external-link-alt"></i>
-          </button>
+              @keydown.enter="saveLink"
+              @keydown.esc="linkForm = null"
+            />
+            <div class="fm-head cr-mt">
+              <span v-if="linkError" class="cr-err">{{ linkError }}</span>
+              <span class="fm-sp"></span>
+              <button type="button" class="fm-btn" @click="linkForm = null">
+                {{ tr("Annuler", "Cancel") }}
+              </button>
+              <button type="button" class="fm-btn cr-done" @click="saveLink">
+                OK
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- tools -->
@@ -585,6 +628,7 @@ import {
   BOARD_COLORS,
   type BoardItem,
   type CraftMethod,
+  type MethodLink,
   type MethodCategory,
 } from "./atziri-craft-methods";
 
@@ -736,8 +780,7 @@ watch(openMethodId, () => {
   undoStack.value = [];
   redoStack.value = [];
   tool.value = "select";
-  urlText.value = method.value?.url ?? "";
-  urlError.value = "";
+  linkForm.value = null;
   gcImages();
 });
 // method deleted from the other window
@@ -752,7 +795,7 @@ function toggleLock() {
   const m = method.value;
   if (!m) return;
   endEdit();
-  if (!m.locked) saveUrl();
+  linkForm.value = null;
   sel.value = null;
   tool.value = "select";
   updateMethod(m.id, (x) => ({ ...x, locked: !x.locked }));
@@ -763,56 +806,55 @@ function toggleLock() {
   }
 }
 
-// ---- trade link ----
-const urlText = shallowRef("");
-const urlError = shallowRef("");
+// ---- trade links ----
 const currentTrade = computed(() => webTabUrls.value.trade);
-watch(
-  () => method.value?.url,
-  (u) => {
-    if (
-      u != null &&
-      document.activeElement?.classList.contains("cm-url") !== true
-    )
-      urlText.value = u;
-  },
+const linkForm = ref<{ id: number | null; url: string; name: string } | null>(
+  null,
 );
-function saveUrl() {
+const linkError = shallowRef("");
+const linkUrlEl = shallowRef<HTMLInputElement | null>(null);
+function startAddLink() {
+  linkForm.value = { id: null, url: "", name: "" };
+  linkError.value = "";
+  nextTick(() => linkUrlEl.value?.focus());
+}
+function startEditLink(l: MethodLink) {
+  linkForm.value = { id: l.id, url: l.url, name: l.name };
+  linkError.value = "";
+  nextTick(() => linkUrlEl.value?.focus());
+}
+function saveLink() {
   const m = method.value;
-  if (!m || m.locked) return;
-  const url = urlText.value.trim();
-  if (url && !isTradeUrl(url)) {
-    urlError.value = tr(
+  const f = linkForm.value;
+  if (!m || !f || m.locked) return;
+  if (!isTradeUrl(f.url)) {
+    linkError.value = tr(
       "Colle un lien du site trade (pathofexile.com/trade2/…).",
       "Paste a link from the trade site (pathofexile.com/trade2/…).",
     );
     return;
   }
-  urlError.value = "";
-  if (url !== m.url) updateMethod(m.id, (x) => ({ ...x, url }));
+  const name =
+    f.name.trim() ||
+    tr(`Lien ${m.links.length + 1}`, `Link ${m.links.length + 1}`);
+  const links =
+    f.id == null
+      ? [...m.links, { id: newId(), name, url: f.url }]
+      : m.links.map((l) => (l.id === f.id ? { ...l, name, url: f.url } : l));
+  updateMethod(m.id, (x) => ({ ...x, links }));
+  linkForm.value = null;
 }
-async function pasteUrl() {
-  try {
-    urlText.value = (await navigator.clipboard.readText()).trim();
-    saveUrl();
-  } catch {
-    urlError.value = tr(
-      "Presse-papiers illisible : colle le lien avec Ctrl + V dans la case.",
-      "Clipboard unreadable: paste the link with Ctrl + V in the box.",
-    );
+async function confirmRemoveLink(l: MethodLink) {
+  const m = method.value;
+  if (!m) return;
+  if (
+    await askConfirm(tr(`Supprimer « ${l.name} » ?`, `Delete "${l.name}"?`))
+  ) {
+    updateMethod(m.id, (x) => ({
+      ...x,
+      links: x.links.filter((y) => y.id !== l.id),
+    }));
   }
-}
-function useCurrentTrade() {
-  urlText.value = currentTrade.value;
-  saveUrl();
-}
-function copyUrl() {
-  if (method.value?.url)
-    navigator.clipboard.writeText(method.value.url).catch(() => undefined);
-}
-function openTrade() {
-  const url = method.value?.url;
-  if (url && isTradeUrl(url)) openInHub(url, "trade");
 }
 
 // ---- board state ----
@@ -1402,27 +1444,12 @@ onUnmounted(() => {
   color: var(--accent);
   background: rgb(216 162 79 / 0.12);
 }
-.cm-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  padding: 6px 10px;
+.cm-links .cr-bases {
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
 }
-.cm-link .cm-url {
+.cm-grow {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.cm-link a.cm-url {
-  color: #7fb4ff;
-}
-.cm-link a.cm-url:hover {
-  text-decoration: underline;
 }
 .cm-tools {
   display: flex;
