@@ -10,6 +10,7 @@ export type HubTab =
   | "farm"
   | "stats"
   | "crafttrack"
+  | "methods"
   | "history"
   | "well"
   | "runes"
@@ -197,8 +198,9 @@ export interface TabView {
 }
 export const TAB_GROUPS: Record<string, TabView[]> = {
   craft: [
-    { tab: "craft", icon: "fa-hammer", fr: "Craft of Exile", en: "Craft of Exile" },
+    { tab: "methods", icon: "fa-book-open", fr: "Méthodes", en: "Methods" },
     { tab: "crafttrack", icon: "fa-flask", fr: "Suivi", en: "Tracking" },
+    { tab: "craft", icon: "fa-hammer", fr: "Craft of Exile", en: "Craft of Exile" },
   ],
   ninja: [
     { tab: "ninja", icon: "fa-chart-line", fr: "poe.ninja", en: "poe.ninja" },
