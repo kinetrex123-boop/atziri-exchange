@@ -43,7 +43,8 @@
               Trade). <br />• Grand cadre : clique pour choisir une image,
               glisse un fichier, ou fais Ctrl + V après une capture (Win + Maj +
               S). Clic sur l'image = plein écran. <br />• Cadre du bas : tes
-              notes, enregistrées toutes seules. <br />• Flèche à droite :
+              notes, enregistrées toutes seules, et 3 petites images à droite
+              (clic, glisser ou Ctrl + V avec la souris dessus). <br />• Flèche à droite :
               nouvelle fiche. Fais défiler avec la molette ou les flèches du
               haut.
             </template>
@@ -54,7 +55,8 @@
               the search shown in the Trade tab). <br />• Large frame: click to
               pick an image, drop a file, or press Ctrl + V after a screenshot
               (Win + Shift + S). Click the image = full screen. <br />• Bottom
-              frame: your notes, saved automatically. <br />• Arrow on the
+              frame: your notes, saved automatically, and 3 small images on the
+              right (click, drop, or Ctrl + V with the mouse over one). <br />• Arrow on the
               right: new card. Scroll with the wheel or the arrows at the top.
             </template>
           </span>
@@ -258,29 +260,31 @@
                 setNotes(card.id, ($event.target as HTMLTextAreaElement).value)
               "
             ></textarea>
-            <!-- small screenshot (tablet size) -->
+            <!-- 3 small screenshots (tablet size) -->
             <div
+              v-for="slot in THUMB_SLOTS"
+              :key="slot"
               class="fs-thumb"
-              :class="{ over: dropOn === -card.id }"
-              @dragover.prevent.stop="dropOn = -card.id"
-              @dragleave="dropOn = dropOn === -card.id ? null : dropOn"
-              @drop.prevent.stop="onDrop(card.id, $event, 'thumbId')"
-              @mouseenter="pasteSlot = 'thumbId'"
+              :class="{ over: thumbDrop === `${card.id}-${slot}` }"
+              @dragover.prevent.stop="thumbDrop = `${card.id}-${slot}`"
+              @dragleave="
+                thumbDrop = thumbDrop === `${card.id}-${slot}` ? null : thumbDrop
+              "
+              @drop.prevent.stop="onDrop(card.id, $event, slot)"
+              @mouseenter="pasteSlot = slot"
               @mouseleave="pasteSlot = 'imageId'"
             >
-              <template
-                v-if="card.thumbId != null && imageUrls.get(card.thumbId)"
-              >
+              <template v-if="card[slot] != null && imageUrls.get(card[slot]!)">
                 <img
-                  :src="imageUrls.get(card.thumbId)"
+                  :src="imageUrls.get(card[slot]!)"
                   alt=""
-                  @click="zoom = imageUrls.get(card.thumbId)!"
+                  @click="zoom = imageUrls.get(card[slot]!)!"
                 />
                 <div class="fs-img-tools">
                   <button
                     type="button"
                     :title="tr('Changer l\'image', 'Change the image')"
-                    @click="pick(card.id, 'thumbId')"
+                    @click="pick(card.id, slot)"
                   >
                     <i class="fas fa-image"></i>
                   </button>
@@ -288,7 +292,7 @@
                     type="button"
                     class="fs-del"
                     :title="tr('Retirer l\'image', 'Remove the image')"
-                    @click="removeImage(card.id, 'thumbId')"
+                    @click="removeImage(card.id, slot)"
                   >
                     <i class="fas fa-times"></i>
                   </button>
@@ -304,7 +308,7 @@
                     'Small image: click, drop or Ctrl + V',
                   )
                 "
-                @click="pick(card.id, 'thumbId')"
+                @click="pick(card.id, slot)"
               >
                 <i class="fas fa-plus"></i>
               </button>
@@ -423,6 +427,7 @@ import {
   setImage,
   removeImage,
   setColor,
+  THUMB_SLOTS,
   type ImageSlot,
   type SetupCard,
 } from "./atziri-farm-setup";
@@ -432,6 +437,7 @@ const strip = shallowRef<HTMLElement | null>(null);
 const fileInput = shallowRef<HTMLInputElement | null>(null);
 const activeId = shallowRef<number | null>(null);
 const dropOn = shallowRef<number | null>(null);
+const thumbDrop = shallowRef<string | null>(null);
 const zoom = shallowRef<string | null>(null);
 const current = shallowRef(0);
 const currentTrade = computed(() => webTabUrls.value.trade);
@@ -607,6 +613,7 @@ function onFile(e: Event) {
 }
 function onDrop(id: number, e: DragEvent, slot: ImageSlot = "imageId") {
   dropOn.value = null;
+  thumbDrop.value = null;
   const file = Array.from(e.dataTransfer?.files ?? []).find((f) =>
     f.type.startsWith("image/"),
   );
@@ -809,7 +816,7 @@ onUnmounted(() => {
 }
 .ar-hub .fs-bottom .fs-notes {
   flex: 1;
-  min-width: 0;
+  min-width: 8rem;
 }
 .ar-hub .fs-thumb {
   position: relative;
