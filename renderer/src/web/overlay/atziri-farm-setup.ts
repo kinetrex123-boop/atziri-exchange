@@ -307,4 +307,43 @@ export async function removeImage(id: number, slot: ImageSlot = "imageId") {
   await dropImage(old);
 }
 
+// ---- backup (Atziri réglage > Sauvegarde) ----
+function cardImageIds(c: SetupCard): number[] {
+  return [c.imageId, ...THUMB_SLOTS.map((k) => c[k])].filter(
+    (x): x is number => x != null,
+  );
+}
+
+/** cards + their images as blobs, for the backup file */
+export async function backupSetups(): Promise<{
+  cards: SetupCard[];
+  images: Map<number, Blob>;
+}> {
+  const images = new Map<number, Blob>();
+  for (const c of setups.value) {
+    for (const id of cardImageIds(c)) {
+      const blob = await idbGet(id);
+      if (blob) images.set(id, blob);
+    }
+  }
+  return { cards: setups.value, images };
+}
+
+/** replaces all the cards (and their images) with the ones of a backup */
+export async function restoreSetups(rawCards: unknown, images: Map<number, Blob>) {
+  const cards = clean(rawCards);
+  const old = setups.value.flatMap(cardImageIds);
+  for (const c of cards) {
+    for (const id of cardImageIds(c)) {
+      const blob = images.get(id);
+      if (!blob) continue;
+      await idbPut(id, blob);
+      setImageUrl(id, blob);
+    }
+  }
+  save(cards);
+  const kept = new Set(cards.flatMap(cardImageIds));
+  for (const id of old) if (!kept.has(id)) await dropImage(id);
+}
+
 loadImages();

@@ -38,6 +38,7 @@ Version personnelle d'[Exiled Exchange 2](https://github.com/Kvan7/Exiled-Exchan
 - Langue du jeu détectée toute seule : si un objet copié n'est pas dans la langue réglée, l'overlay passe dans la langue du jeu et relance la vérification.
 - Dossier `partage\` : installateur + LISEZ-MOI.txt, zippés dans `Atziri Exchange.zip`, à envoyer à un ami.
 - Le raccourci PoEDB ouvre la fiche dans l'onglet PoEDB de Shift+Espace.
+- **Sauvegarde** (Atziri réglage, `atziri-backup.ts`) : Exporter crée un fichier `atziri-sauvegarde-AAAA-MM-JJ.json` (fiches Farm > Setup et méthodes de craft, images comprises en base64) ; Importer… le relit et, après confirmation dans la page, remplace les fiches et méthodes actuelles.
 - Paramètres : première page « Atziri réglage » qui regroupe les réglages les plus utilisés.
 - Configuration par défaut : celle de l'utilisateur.
 - Listes d'objets et de mods mises à jour automatiquement depuis GitHub (vérification toutes les 3 h, fichiers validés avant usage, utilisés au démarrage suivant ou tout de suite avec « Appliquer maintenant »).
