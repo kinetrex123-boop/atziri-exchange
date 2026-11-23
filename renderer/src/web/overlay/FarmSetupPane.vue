@@ -74,8 +74,25 @@
           @mouseenter="activeId = card.id"
           @mousedown="activeId = card.id"
         >
-          <div class="fs-tools" :class="{ open: colorFor === card.id }">
+          <div
+            class="fs-tools"
+            :class="{ open: colorFor === card.id || card.locked }"
+          >
             <button
+              type="button"
+              class="fs-lock"
+              :class="{ on: card.locked }"
+              :title="
+                card.locked
+                  ? tr('Fiche verrouillée : clic pour la modifier', 'Card locked: click to edit it')
+                  : tr('Verrouiller la fiche (plus rien ne bouge)', 'Lock the card (nothing moves any more)')
+              "
+              @click="toggleLock(card)"
+            >
+              <i class="fas" :class="card.locked ? 'fa-lock' : 'fa-lock-open'"></i>
+            </button>
+            <button
+              v-if="!card.locked"
               type="button"
               :title="tr('Couleur de la fiche', 'Card color')"
               @click="colorFor = colorFor === card.id ? null : card.id"
@@ -83,6 +100,7 @@
               <i class="fas fa-palette"></i>
             </button>
             <button
+              v-if="!card.locked"
               type="button"
               :title="tr('Déplacer à gauche', 'Move left')"
               :disabled="ci === 0"
@@ -91,6 +109,7 @@
               <i class="fas fa-arrow-left"></i>
             </button>
             <button
+              v-if="!card.locked"
               type="button"
               :title="tr('Déplacer à droite', 'Move right')"
               :disabled="ci === setups.length - 1"
@@ -106,6 +125,7 @@
               <i class="fas fa-clone"></i>
             </button>
             <button
+              v-if="!card.locked"
               type="button"
               class="fs-del"
               :title="tr('Supprimer la fiche', 'Delete the card')"
@@ -116,7 +136,7 @@
           </div>
 
           <!-- color of the card -->
-          <div v-if="colorFor === card.id" class="fs-colors">
+          <div v-if="colorFor === card.id && !card.locked" class="fs-colors">
             <button
               v-for="c in COLORS"
               :key="c"
@@ -153,6 +173,7 @@
 
           <input
             class="fs-title"
+            :readonly="card.locked"
             :value="card.title"
             :placeholder="tr('Titre de la stratégie', 'Strategy title')"
             spellcheck="false"
@@ -174,6 +195,7 @@
                 :title="
                   link.url || tr('Ajouter un lien trade', 'Add a trade link')
                 "
+                :disabled="!link.url && card.locked"
                 @click="link.url ? go(link.url) : startEdit(card, li)"
               >
                 <template v-if="link.url">{{
@@ -185,7 +207,7 @@
                 >
               </button>
               <button
-                v-if="link.url"
+                v-if="link.url && !card.locked"
                 type="button"
                 class="fs-link-edit"
                 :title="tr('Renommer / modifier', 'Rename / edit')"
@@ -211,7 +233,7 @@
                   alt=""
                   @click="zoom = imageUrls.get(card.imageId)!"
                 />
-                <div class="fs-img-tools">
+                <div v-if="!card.locked" class="fs-img-tools">
                   <button
                     type="button"
                     :title="tr('Changer l\'image', 'Change the image')"
@@ -233,6 +255,7 @@
                 v-else
                 type="button"
                 class="fs-img-empty"
+                :disabled="card.locked"
                 @click="pick(card.id)"
               >
                 <i class="fas fa-camera"></i>
@@ -249,6 +272,7 @@
           <div class="fs-bottom">
             <textarea
               class="fs-notes"
+              :readonly="card.locked"
               :value="card.notes"
               :placeholder="
                 tr(
@@ -280,7 +304,7 @@
                   alt=""
                   @click="zoom = imageUrls.get(card[slot]!)!"
                 />
-                <div class="fs-img-tools">
+                <div v-if="!card.locked" class="fs-img-tools">
                   <button
                     type="button"
                     :title="tr('Changer l\'image', 'Change the image')"
@@ -302,6 +326,7 @@
                 v-else
                 type="button"
                 class="fs-img-empty"
+                :disabled="card.locked"
                 :title="
                   tr(
                     'Petite image : clique, glisse ou Ctrl + V',
@@ -427,6 +452,7 @@ import {
   setImage,
   removeImage,
   setColor,
+  setLocked,
   THUMB_SLOTS,
   type ImageSlot,
   type SetupCard,
@@ -566,6 +592,7 @@ const edit = ref<{
   url: string;
 } | null>(null);
 function startEdit(card: SetupCard, slot: number) {
+  if (card.locked) return;
   const l = card.links[slot];
   edit.value = { cardId: card.id, slot, name: l.name, url: l.url };
 }
@@ -600,7 +627,18 @@ const COLORS = [
 
 let pickFor: number | null = null;
 let pickSlot: ImageSlot = "imageId";
+function isLocked(id: number | null) {
+  return setups.value.find((c) => c.id === id)?.locked === true;
+}
+function toggleLock(card: SetupCard) {
+  if (!card.locked) {
+    colorFor.value = null;
+    if (edit.value?.cardId === card.id) edit.value = null;
+  }
+  setLocked(card.id, !card.locked);
+}
 function pick(id: number, slot: ImageSlot = "imageId") {
+  if (isLocked(id)) return;
   pickFor = id;
   pickSlot = slot;
   fileInput.value?.click();
@@ -614,6 +652,7 @@ function onFile(e: Event) {
 function onDrop(id: number, e: DragEvent, slot: ImageSlot = "imageId") {
   dropOn.value = null;
   thumbDrop.value = null;
+  if (isLocked(id)) return;
   const file = Array.from(e.dataTransfer?.files ?? []).find((f) =>
     f.type.startsWith("image/"),
   );
@@ -625,7 +664,8 @@ function onPaste(e: ClipboardEvent) {
     !hubVisible.value ||
     hubTab.value !== "farm" ||
     farmView.value !== "setup" ||
-    activeId.value == null
+    activeId.value == null ||
+    isLocked(activeId.value)
   )
     return;
   const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
@@ -730,6 +770,14 @@ onUnmounted(() => {
 .ar-hub .fs-tools button:hover,
 .ar-hub .fs-img-tools button:hover {
   color: var(--accent);
+}
+.ar-hub .fs-tools .fs-lock.on {
+  color: var(--accent);
+}
+.ar-hub .fs-img-empty:disabled,
+.ar-hub .fs-link-go:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 .ar-hub .fs-tools button:disabled {
   opacity: 0.3;

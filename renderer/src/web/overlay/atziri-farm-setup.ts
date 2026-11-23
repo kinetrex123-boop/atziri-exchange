@@ -23,6 +23,7 @@ export interface SetupCard {
   thumb2Id: number | null;
   thumb3Id: number | null;
   color: string | null; // card color, null = theme
+  locked: boolean; // nothing can be changed, moved or deleted
 }
 
 const KEY = "atziri-farm-setups";
@@ -60,6 +61,7 @@ function clean(raw: unknown): SetupCard[] {
           typeof c.color === "string" && /^#[0-9a-f]{6}$/i.test(c.color)
             ? c.color
             : null,
+        locked: c.locked === true,
       };
     });
 }
@@ -106,6 +108,7 @@ export function addCard(afterId?: number): number {
     thumb2Id: null,
     thumb3Id: null,
     color: null,
+    locked: false,
   };
   const list = [...setups.value];
   const at = afterId == null ? -1 : list.findIndex((c) => c.id === afterId);
@@ -136,6 +139,7 @@ export async function duplicateCard(id: number): Promise<number | null> {
     thumb2Id: await copyImage(src.thumb2Id, 3),
     thumb3Id: await copyImage(src.thumb3Id, 4),
     color: src.color,
+    locked: false,
   };
   const list = [...setups.value];
   list.splice(list.findIndex((c) => c.id === id) + 1, 0, copy);
@@ -168,6 +172,10 @@ function patch(id: number, fn: (c: SetupCard) => SetupCard) {
 
 export function setTitle(id: number, title: string) {
   patch(id, (c) => ({ ...c, title }));
+}
+
+export function setLocked(id: number, locked: boolean) {
+  patch(id, (c) => ({ ...c, locked }));
 }
 
 export function setColor(id: number, color: string | null) {
@@ -330,7 +338,10 @@ export async function backupSetups(): Promise<{
 }
 
 /** replaces all the cards (and their images) with the ones of a backup */
-export async function restoreSetups(rawCards: unknown, images: Map<number, Blob>) {
+export async function restoreSetups(
+  rawCards: unknown,
+  images: Map<number, Blob>,
+) {
   const cards = clean(rawCards);
   const old = setups.value.flatMap(cardImageIds);
   for (const c of cards) {
