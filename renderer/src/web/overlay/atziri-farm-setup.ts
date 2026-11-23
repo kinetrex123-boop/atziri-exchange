@@ -5,6 +5,8 @@
 import { shallowRef } from "vue";
 
 export const LINK_SLOTS = 5;
+/** the 3 small images at the bottom right of a card */
+export const THUMB_SLOTS = ["thumbId", "thumb2Id", "thumb3Id"] as const;
 
 export interface SetupLink {
   name: string;
@@ -17,8 +19,11 @@ export interface SetupCard {
   links: SetupLink[]; // always LINK_SLOTS entries (empty url = free slot)
   notes: string;
   imageId: number | null;
-  thumbId: number | null; // small screenshot (tablet size)
+  thumbId: number | null; // small screenshots (tablet size), bottom right
+  thumb2Id: number | null;
+  thumb3Id: number | null;
   color: string | null; // card color, null = theme
+  locked: boolean; // nothing can be changed, moved or deleted
 }
 
 const KEY = "atziri-farm-setups";
@@ -50,10 +55,13 @@ function clean(raw: unknown): SetupCard[] {
         notes: typeof c.notes === "string" ? c.notes : "",
         imageId: typeof c.imageId === "number" ? c.imageId : null,
         thumbId: typeof c.thumbId === "number" ? c.thumbId : null,
+        thumb2Id: typeof c.thumb2Id === "number" ? c.thumb2Id : null,
+        thumb3Id: typeof c.thumb3Id === "number" ? c.thumb3Id : null,
         color:
           typeof c.color === "string" && /^#[0-9a-f]{6}$/i.test(c.color)
             ? c.color
             : null,
+        locked: c.locked === true,
       };
     });
 }
@@ -97,7 +105,10 @@ export function addCard(afterId?: number): number {
     notes: "",
     imageId: null,
     thumbId: null,
+    thumb2Id: null,
+    thumb3Id: null,
     color: null,
+    locked: false,
   };
   const list = [...setups.value];
   const at = afterId == null ? -1 : list.findIndex((c) => c.id === afterId);
@@ -125,7 +136,10 @@ export async function duplicateCard(id: number): Promise<number | null> {
     notes: src.notes,
     imageId: await copyImage(src.imageId, 1),
     thumbId: await copyImage(src.thumbId, 2),
+    thumb2Id: await copyImage(src.thumb2Id, 3),
+    thumb3Id: await copyImage(src.thumb3Id, 4),
     color: src.color,
+    locked: false,
   };
   const list = [...setups.value];
   list.splice(list.findIndex((c) => c.id === id) + 1, 0, copy);
@@ -137,7 +151,10 @@ export async function deleteCard(id: number) {
   const card = setups.value.find((c) => c.id === id);
   save(setups.value.filter((c) => c.id !== id));
   if (card?.imageId != null) await dropImage(card.imageId);
-  if (card?.thumbId != null) await dropImage(card.thumbId);
+  for (const slot of THUMB_SLOTS) {
+    const imageId = card?.[slot];
+    if (imageId != null) await dropImage(imageId);
+  }
 }
 
 export function moveCard(id: number, delta: -1 | 1) {
@@ -155,6 +172,10 @@ function patch(id: number, fn: (c: SetupCard) => SetupCard) {
 
 export function setTitle(id: number, title: string) {
   patch(id, (c) => ({ ...c, title }));
+}
+
+export function setLocked(id: number, locked: boolean) {
+  patch(id, (c) => ({ ...c, locked }));
 }
 
 export function setColor(id: number, color: string | null) {
@@ -235,7 +256,7 @@ async function dropImage(imageId: number) {
 
 export async function loadImages() {
   for (const c of setups.value) {
-    for (const imageId of [c.imageId, c.thumbId]) {
+    for (const imageId of [c.imageId, ...THUMB_SLOTS.map((k) => c[k])]) {
       if (imageId == null || imageUrls.value.has(imageId)) continue;
       const blob = await idbGet(imageId);
       if (blob) setImageUrl(imageId, blob);
@@ -262,7 +283,7 @@ async function shrink(file: Blob): Promise<Blob> {
   }
 }
 
-export type ImageSlot = "imageId" | "thumbId";
+export type ImageSlot = "imageId" | "thumbId" | "thumb2Id" | "thumb3Id";
 
 /** puts a screenshot on a card (replaces the previous one) */
 export async function setImage(
@@ -292,6 +313,48 @@ export async function removeImage(id: number, slot: ImageSlot = "imageId") {
   if (old == null) return;
   patch(id, (c) => ({ ...c, [slot]: null }));
   await dropImage(old);
+}
+
+// ---- backup (Atziri réglage > Sauvegarde) ----
+function cardImageIds(c: SetupCard): number[] {
+  return [c.imageId, ...THUMB_SLOTS.map((k) => c[k])].filter(
+    (x): x is number => x != null,
+  );
+}
+
+/** cards + their images as blobs, for the backup file */
+export async function backupSetups(): Promise<{
+  cards: SetupCard[];
+  images: Map<number, Blob>;
+}> {
+  const images = new Map<number, Blob>();
+  for (const c of setups.value) {
+    for (const id of cardImageIds(c)) {
+      const blob = await idbGet(id);
+      if (blob) images.set(id, blob);
+    }
+  }
+  return { cards: setups.value, images };
+}
+
+/** replaces all the cards (and their images) with the ones of a backup */
+export async function restoreSetups(
+  rawCards: unknown,
+  images: Map<number, Blob>,
+) {
+  const cards = clean(rawCards);
+  const old = setups.value.flatMap(cardImageIds);
+  for (const c of cards) {
+    for (const id of cardImageIds(c)) {
+      const blob = images.get(id);
+      if (!blob) continue;
+      await idbPut(id, blob);
+      setImageUrl(id, blob);
+    }
+  }
+  save(cards);
+  const kept = new Set(cards.flatMap(cardImageIds));
+  for (const id of old) if (!kept.has(id)) await dropImage(id);
 }
 
 loadImages();

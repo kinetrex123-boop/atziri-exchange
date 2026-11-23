@@ -251,6 +251,43 @@
         </button>
       </div>
     </div>
+
+    <!-- Backup of the Farm > Setup cards and of the craft methods -->
+    <div class="mb-4 mt-4">
+      <div class="flex-1 mb-1">{{ tr("Sauvegarde", "Backup") }}</div>
+      <p class="text-gray-500 text-sm mb-2">
+        {{
+          tr(
+            "Fiches Farm > Setup et méthodes de craft, images comprises, dans un fichier .json : pour garder une copie ou les retrouver sur un autre PC.",
+            "Farm > Setup cards and craft methods, images included, in one .json file: to keep a copy or get them back on another PC.",
+          )
+        }}
+      </p>
+      <div class="flex gap-2">
+        <button class="btn" :disabled="backupBusy" @click="doExport">
+          <i class="fas fa-download"></i> {{ tr("Exporter", "Export") }}
+        </button>
+        <label class="btn cursor-pointer" :class="{ 'opacity-50 pointer-events-none': backupBusy }">
+          <i class="fas fa-upload"></i> {{ tr("Importer…", "Import…") }}
+          <input type="file" accept=".json,application/json" class="hidden" @change="pickBackup" />
+        </label>
+      </div>
+      <div v-if="backupPending" class="atz-upstream mt-2">
+        <p class="mb-2">
+          {{
+            tr(
+              `Remplacer tes fiches Setup et tes méthodes par celles du fichier (${backupPending.setups} fiche(s), ${backupPending.methods} méthode(s)${backupPending.savedAt ? ", du " + new Date(backupPending.savedAt).toLocaleString(dateLocale()) : ""}) ? Celles d'aujourd'hui seront effacées.`,
+              `Replace your Setup cards and methods with the ones of the file (${backupPending.setups} card(s), ${backupPending.methods} method(s)${backupPending.savedAt ? ", from " + new Date(backupPending.savedAt).toLocaleString(dateLocale()) : ""})? The current ones will be erased.`,
+            )
+          }}
+        </p>
+        <div class="flex gap-2">
+          <button class="btn" :disabled="backupBusy" @click="doImport">{{ tr("Remplacer", "Replace") }}</button>
+          <button class="btn" :disabled="backupBusy" @click="backupPending = null">{{ tr("Annuler", "Cancel") }}</button>
+        </div>
+      </div>
+      <p v-if="backupMsg" class="text-sm mt-2" :class="backupError ? 'text-red-400' : 'text-gray-400'">{{ backupMsg }}</p>
+    </div>
   </div>
 
   <!-- Overlay colors: applied immediately, remembered on this PC -->
@@ -534,6 +571,12 @@ import {
 import { brand, setBrand, brandIconUrl, BRAND_ICON_PRESETS } from "../atziri-brand";
 import { Host } from "@/web/background/IPC";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
+import {
+  exportBackup,
+  readBackup,
+  importBackup,
+  type ParsedBackup,
+} from "@/web/overlay/atziri-backup";
 
 const props = defineProps(configProp());
 
@@ -850,6 +893,61 @@ const priceCheckHotkeys = computed<HotkeySchema[]>(() => [
     ],
   },
 ]);
+
+// ---- backup of Farm > Setup and craft methods ----
+const backupBusy = shallowRef(false);
+const backupMsg = shallowRef("");
+const backupError = shallowRef(false);
+const backupPending = shallowRef<ParsedBackup | null>(null);
+async function doExport() {
+  backupBusy.value = true;
+  backupError.value = false;
+  try {
+    const n = await exportBackup();
+    backupMsg.value = tr(
+      `Exporté : ${n.setups} fiche(s) Setup, ${n.methods} méthode(s). Le fichier est dans tes Téléchargements.`,
+      `Exported: ${n.setups} Setup card(s), ${n.methods} method(s). The file is in your Downloads.`,
+    );
+  } catch {
+    backupError.value = true;
+    backupMsg.value = tr("L'export a échoué.", "The export failed.");
+  } finally {
+    backupBusy.value = false;
+  }
+}
+async function pickBackup(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const f = input.files?.[0];
+  input.value = "";
+  if (!f) return;
+  backupMsg.value = "";
+  const b = await readBackup(f);
+  if (!b) {
+    backupError.value = true;
+    backupMsg.value = tr("Ce fichier n'est pas une sauvegarde Atziri.", "This file is not an Atziri backup.");
+    return;
+  }
+  backupPending.value = b;
+}
+async function doImport() {
+  const b = backupPending.value;
+  if (!b) return;
+  backupBusy.value = true;
+  backupError.value = false;
+  try {
+    await importBackup(b);
+    backupMsg.value = tr(
+      `Importé : ${b.setups} fiche(s) Setup, ${b.methods} méthode(s).`,
+      `Imported: ${b.setups} Setup card(s), ${b.methods} method(s).`,
+    );
+  } catch {
+    backupError.value = true;
+    backupMsg.value = tr("L'import a échoué.", "The import failed.");
+  } finally {
+    backupBusy.value = false;
+    backupPending.value = null;
+  }
+}
 </script>
 
 <style lang="postcss">

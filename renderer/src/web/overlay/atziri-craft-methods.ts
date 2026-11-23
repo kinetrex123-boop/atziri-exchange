@@ -380,4 +380,32 @@ export async function storeImage(
   return { imageId, w, h };
 }
 
+// ---- backup (Atziri réglage > Sauvegarde) ----
+/** methods + their images as blobs, for the backup file */
+export async function backupMethods(): Promise<{
+  data: MethodsData;
+  images: Map<number, Blob>;
+}> {
+  const images = new Map<number, Blob>();
+  for (const id of usedImages()) {
+    const blob = await idbGet(id);
+    if (blob) images.set(id, blob);
+  }
+  return { data: methodsData.value, images };
+}
+
+/** replaces all the methods (and their images) with the ones of a backup */
+export async function restoreMethods(raw: unknown, images: Map<number, Blob>) {
+  const data = clean(raw as Raw);
+  openMethodId.value = null;
+  save(data);
+  for (const id of usedImages()) {
+    const blob = images.get(id);
+    if (!blob) continue;
+    await idbPut(id, blob);
+    setImageUrl(id, blob);
+  }
+  await gcImages();
+}
+
 loadImages().then(gcImages);
