@@ -35,6 +35,8 @@ export interface CraftMethod {
   catId: number;
   name: string;
   icon: string;
+  /** the user's own icon (small PNG data URL), shown instead of `icon` */
+  customIcon?: string;
   links: MethodLink[];
   locked: boolean;
   items: BoardItem[];
@@ -130,6 +132,10 @@ function clean(raw: Raw): MethodsData {
       catId: m.catId,
       name: str(m.name, "?"),
       icon: str(m.icon, "armour"),
+      ...(typeof m.customIcon === "string" &&
+      m.customIcon.startsWith("data:image/")
+        ? { customIcon: m.customIcon }
+        : {}),
       links: cleanLinks(m),
       locked: m.locked === true,
       items: (Array.isArray(m.items) ? m.items : [])
@@ -207,7 +213,12 @@ export function moveCategory(id: number, delta: -1 | 1) {
 }
 
 // ---- methods ----
-export function addMethod(catId: number, name: string, icon: string): number {
+export function addMethod(
+  catId: number,
+  name: string,
+  icon: string,
+  customIcon?: string,
+): number {
   const id = newId();
   const d = methodsData.value;
   const m: CraftMethod = {
@@ -215,6 +226,7 @@ export function addMethod(catId: number, name: string, icon: string): number {
     catId,
     name,
     icon,
+    ...(customIcon ? { customIcon } : {}),
     links: [],
     locked: false,
     items: [],
@@ -409,3 +421,32 @@ export async function restoreMethods(raw: unknown, images: Map<number, Blob>) {
 }
 
 loadImages().then(gcImages);
+
+/** size of a user icon: square, the picture fitted inside (transparency kept) */
+const CUSTOM_ICON_PX = 96;
+
+/** reads a picture file and fits it into a small square PNG for a method icon */
+export async function makeCustomIcon(file: Blob): Promise<string | null> {
+  try {
+    const bmp = await createImageBitmap(file);
+    const c = document.createElement("canvas");
+    c.width = c.height = CUSTOM_ICON_PX;
+    const ctx = c.getContext("2d");
+    if (!ctx) return null;
+    const k = Math.min(CUSTOM_ICON_PX / bmp.width, CUSTOM_ICON_PX / bmp.height);
+    const w = Math.max(1, Math.round(bmp.width * k));
+    const h = Math.max(1, Math.round(bmp.height * k));
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(
+      bmp,
+      Math.round((CUSTOM_ICON_PX - w) / 2),
+      Math.round((CUSTOM_ICON_PX - h) / 2),
+      w,
+      h,
+    );
+    bmp.close();
+    return c.toDataURL("image/png");
+  } catch {
+    return null;
+  }
+}
