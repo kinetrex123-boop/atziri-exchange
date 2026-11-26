@@ -11,6 +11,7 @@ import { HostClipboard } from "./HostClipboard";
 import { OcrWorker } from "../vision/link-main";
 import { isCraftArmed } from "../atziri-craft";
 import { AtziriOcr } from "../atziri-ocr";
+import { revealDetachedHub } from "../atziri-detached";
 import type { ShortcutAction } from "../../../ipc/types";
 import type { Logger } from "../RemoteLogger";
 import type { OverlayWindow } from "../windowing/OverlayWindow";
@@ -244,6 +245,20 @@ export class Shortcuts {
               .readItemText()
               .then((clipboard) => {
                 this.areaTracker.removeListeners();
+                // Atziri Exchange: Shift + Space page detached, PoEDB opens
+                // in that window; opening the overlay would attach it again
+                if (action.target === "open-poedb" && revealDetachedHub()) {
+                  this.server.sendEventTo("hub", {
+                    name: "MAIN->CLIENT::item-text",
+                    payload: {
+                      target: action.target,
+                      clipboard,
+                      position: pressPosition,
+                      focusOverlay: false,
+                    },
+                  });
+                  return;
+                }
                 this.server.sendEventTo("last-active", {
                   name: "MAIN->CLIENT::item-text",
                   payload: {

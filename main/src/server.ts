@@ -136,12 +136,19 @@ export function onEventAnyClient<Name extends IpcEvent["name"]>(
   evBus.on(name, cb);
 }
 
+// Atziri Exchange: sockets of the detached Shift + Space window
+const hubClients = new Set<WebSocket>();
+
 export function sendEventTo(
-  target: "last-active" | "any" | "broadcast",
+  target: "last-active" | "any" | "broadcast" | "hub",
   event: IpcEvent,
 ) {
   const msg = JSON.stringify(event);
-  if (target === "broadcast") {
+  if (target === "hub") {
+    for (const client of hubClients) {
+      client.send(msg);
+    }
+  } else if (target === "broadcast") {
     for (const client of websocketServer.clients) {
       client.send(msg);
     }
@@ -179,6 +186,7 @@ export async function startServer(
     // the detached window never takes over the hotkey results (Ctrl + D...)
     const isHub = req.url === "/events?hub=1";
     if (!isHub || !lastActiveClient) lastActiveClient = socket;
+    if (isHub) hubClients.add(socket);
     socket.on("message", (bytes) => {
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const event = JSON.parse(bytes.toString("utf-8")) as IpcEvent;
@@ -188,6 +196,7 @@ export async function startServer(
       evBus.emit(event.name, event.payload);
     });
     socket.on("close", () => {
+      hubClients.delete(socket);
       const clients = websocketServer.clients;
       if (clients.size === 1) {
         lastActiveClient = clients.values().next().value!;

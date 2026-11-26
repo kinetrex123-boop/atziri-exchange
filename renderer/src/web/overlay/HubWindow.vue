@@ -10,11 +10,20 @@ import { shallowRef } from "vue";
 import MarketPrices from "./MarketPrices.vue";
 import { usePoeninja } from "@/web/background/Prices";
 import { useLeagues } from "@/web/background/Leagues";
+import { Host } from "@/web/background/IPC";
+import { parseClipboard } from "@/parser";
+import { openPoedb } from "@/web/item-check/hotkeyable-actions";
 
 document.title = "Atziri Exchange";
 // same start-up as the overlay: league list, then poe.ninja prices
 usePoeninja();
 useLeagues().load();
+// PoEDB shortcut while detached: the page opens here, the overlay stays closed
+Host.onEvent("MAIN->CLIENT::item-text", (e) => {
+  if (e.target !== "open-poedb") return;
+  const parsed = parseClipboard(e.clipboard);
+  if (parsed.isOk()) openPoedb(parsed.value);
+});
 // refresh prices only while the window is shown
 const visible = shallowRef(!document.hidden);
 document.addEventListener("visibilitychange", () => {

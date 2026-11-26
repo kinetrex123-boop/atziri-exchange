@@ -115,6 +115,19 @@ function openWindow(port: number) {
   win.loadURL(`${base}?atziri=hub`);
 }
 
+/**
+ * True when the detached window is open: a page asked by a hotkey (PoEDB
+ * shortcut) then goes to it, the overlay stays closed (opening the overlay
+ * page would put the detached page back into it). Shown again if minimized,
+ * without taking the focus away from the game.
+ */
+export function revealDetachedHub(): boolean {
+  if (!win || win.isDestroyed()) return false;
+  if (win.isMinimized()) win.restore();
+  else if (!win.isVisible()) win.showInactive();
+  return true;
+}
+
 function closeWindow() {
   if (win && !win.isDestroyed()) win.close();
 }
