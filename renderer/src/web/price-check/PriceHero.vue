@@ -13,26 +13,28 @@
           <span class="atz-hero-unit">{{ view.mainUnit }}</span>
         </div>
       </div>
-      <div v-if="view.confidence || view.cells?.length" class="atz-hero-right">
+      <div v-if="view.confidence" class="atz-hero-right">
         <span
-          v-if="view.confidence"
           class="atz-hero-conf"
           :class="`atz-conf-${view.confidence.level}`"
           :title="view.confidence.hint"
           ><i class="atz-hero-dot"></i>{{ view.confidence.label }}</span
         >
-        <div
-          v-for="c in view.cells"
-          :key="c.label"
-          class="atz-hero-cell"
-          :title="`${c.label} : ${c.text} ${c.unit}`"
-        >
-          <span class="atz-hero-cell-l">{{ c.label }}</span>
-          <span class="atz-hero-cell-v">
-            <b>{{ c.text }}</b>
-            <img v-if="c.icon" :src="c.icon" class="atz-hero-cur-sm" />
-          </span>
-        </div>
+      </div>
+    </div>
+    <!-- Atziri Exchange: range, cheapest and to-sell in a small row inside the banner, under the price -->
+    <div v-if="view.cells?.length" class="atz-hero-cells">
+      <div
+        v-for="c in view.cells"
+        :key="c.label"
+        class="atz-hero-cell"
+        :title="`${c.label} : ${c.text} ${c.unit}`"
+      >
+        <span class="atz-hero-cell-l">{{ c.label }}</span>
+        <span class="atz-hero-cell-v">
+          <b>{{ c.text }}</b>
+          <img v-if="c.icon" :src="c.icon" class="atz-hero-cur-sm" />
+        </span>
       </div>
     </div>
     <div v-if="view.sub" class="atz-hero-sub" :title="view.sub">
@@ -110,19 +112,9 @@ function confidenceView(
       return {
         level,
         label: tr("Fiabilité bonne", "Good confidence"),
-        hint: tr(
-          `${basis}, prix cohérents.`,
-          `${basis}, consistent prices.`,
-        ),
+        hint: tr(`${basis}, prix cohérents.`, `${basis}, consistent prices.`),
       };
   }
-}
-
-function timeText(at: number) {
-  return new Date(at).toLocaleTimeString(tr("fr-FR", "en-GB"), {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 const view = computed(() => {
@@ -162,8 +154,6 @@ const view = computed(() => {
           `${s.unconverted} exalted/chaos listing${pl(s.unconverted)} not counted: rate not loaded yet`,
         ),
       );
-    if (s.ratesAt)
-      notes.push(tr(`taux du ${timeText(s.ratesAt)}`, `rates of ${timeText(s.ratesAt)}`));
     return {
       caption: tr(
         `Médiane des ${kept} moins chères · ${s.count} annonce${pl(s.count)}`,
@@ -274,18 +264,9 @@ const view = computed(() => {
 
 .atz-hero-right {
   flex: none;
-  max-width: 62%;
   display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: flex-start;
-  gap: 4px;
-}
-
-/* confidence on its own line, the three cells (range, cheapest, to sell) under it */
-.atz-hero-right > .atz-hero-conf {
-  flex-basis: 100%;
-  justify-content: flex-end;
 }
 
 .atz-hero-cap {
@@ -361,8 +342,8 @@ const view = computed(() => {
 }
 
 .atz-hero-cur-sm {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 0.9rem;
+  height: 0.9rem;
   flex: none;
 }
 
@@ -370,22 +351,28 @@ const view = computed(() => {
   color: theme("colors.gray.400");
 }
 
-/* Fourchette, Moins chère, À vendre: under the confidence, on the right */
+/* Fourchette, Moins chère, À vendre: one small row of three, under the price */
+.atz-hero-cells {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 6px;
+}
+
 .atz-hero-cell {
   min-width: 0;
-  max-width: 100%;
-  padding: 3px 8px 4px;
+  padding: 2px 6px 3px;
   border: 1px solid theme("colors.gray.700");
-  border-radius: 6px;
+  border-radius: 5px;
   background: rgb(var(--c-gray-900) / 0.6);
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .atz-hero-cell-l {
   display: block;
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: theme("colors.gray.400");
   white-space: nowrap;
   overflow: hidden;
@@ -395,10 +382,10 @@ const view = computed(() => {
 .atz-hero-cell-v {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   color: theme("colors.blue.400");
 
   b {
