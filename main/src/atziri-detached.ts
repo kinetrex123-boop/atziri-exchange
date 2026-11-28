@@ -5,7 +5,7 @@
 // size are remembered. Pressing Shift + Space in game puts it back into the
 // overlay (the overlay calls /atziri-hub/attach when it opens).
 import path from "path";
-import { isPublicWebUrl } from "./atziri-web-guard";
+import { enableWebZoom, isPublicWebUrl } from "./atziri-web-guard";
 import fs from "fs";
 import { app, BrowserWindow, screen, shell } from "electron";
 import type { Server, IncomingMessage, ServerResponse } from "http";
@@ -87,6 +87,8 @@ function openWindow(port: number) {
     if (params.src && !isPublicWebUrl(params.src)) event.preventDefault();
   });
   wc.on("did-attach-webview", (_, webviewWc) => {
+    // Ctrl + wheel zooms the page in and out
+    enableWebZoom(webviewWc);
     webviewWc.setWindowOpenHandler((details) => {
       if (isPublicWebUrl(details.url)) webviewWc.loadURL(details.url);
       return { action: "deny" };

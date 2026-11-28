@@ -1,5 +1,5 @@
 import path from "path";
-import { isPublicWebUrl } from "../atziri-web-guard";
+import { enableWebZoom, isPublicWebUrl } from "../atziri-web-guard";
 import { BrowserWindow, dialog, shell, Menu } from "electron";
 import {
   OverlayController,
@@ -98,6 +98,8 @@ export class OverlayWindow {
       "did-attach-webview",
       (_, webviewWebContents) => {
         webviewWebContents.on("before-input-event", this.handleExtraCommands);
+        // Ctrl + wheel zooms the page in and out
+        enableWebZoom(webviewWebContents);
         // links opening a new window stay in the same tab
         webviewWebContents.setWindowOpenHandler((details) => {
           if (isPublicWebUrl(details.url)) webviewWebContents.loadURL(details.url);

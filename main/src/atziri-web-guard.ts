@@ -10,7 +10,10 @@ import { BROWSER_PARTITION } from "./adblock";
 
 // harmless, and used by the sites: "copy" buttons (regex of poe2.re, trade
 // whispers) and videos in full screen
-const ALLOWED_PERMISSIONS = new Set(["clipboard-sanitized-write", "fullscreen"]);
+const ALLOWED_PERMISSIONS = new Set([
+  "clipboard-sanitized-write",
+  "fullscreen",
+]);
 
 export function lockDownBrowserSession() {
   const ses = session.fromPartition(BROWSER_PARTITION);
@@ -43,4 +46,39 @@ export function isPublicWebUrl(url: string): boolean {
   if (/^169\.254\./.test(host)) return false;
   if (/^f[cd][0-9a-f]{2}:/.test(host) || /^fe80:/.test(host)) return false;
   return true;
+}
+
+// zoom of the web pages: Ctrl + wheel, Ctrl + = / Ctrl + - and Ctrl + 0 to go
+// back to 100 %. Electron keeps it per site until the app is closed.
+const ZOOM_STEP = 0.5;
+const ZOOM_MIN = -3; // about 58 %
+const ZOOM_MAX = 4; // about 207 %
+
+export function enableWebZoom(wc: Electron.WebContents) {
+  const zoomBy = (step: number) => {
+    const next = Math.min(
+      ZOOM_MAX,
+      Math.max(ZOOM_MIN, wc.getZoomLevel() + step),
+    );
+    wc.setZoomLevel(next);
+  };
+  // Ctrl + wheel (and pinch on a touchpad)
+  wc.on("zoom-changed", (_e, direction) => {
+    zoomBy(direction === "in" ? ZOOM_STEP : -ZOOM_STEP);
+  });
+  wc.on("before-input-event", (e, input) => {
+    if (input.type !== "keyDown" || !input.control || input.alt) return;
+    // by character (French AZERTY keyboard) or by key position (numpad)
+    const { key, code } = input;
+    if (key === "+" || key === "=" || code === "NumpadAdd") {
+      e.preventDefault();
+      zoomBy(ZOOM_STEP);
+    } else if (key === "-" || code === "NumpadSubtract") {
+      e.preventDefault();
+      zoomBy(-ZOOM_STEP);
+    } else if (code === "Digit0" || code === "Numpad0") {
+      e.preventDefault();
+      wc.setZoomLevel(0);
+    }
+  });
 }
