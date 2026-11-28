@@ -84,6 +84,17 @@ describe("Well of Souls choices on screen (French client)", () => {
     setupTests({ language: "fr" });
     await init("fr");
   });
+  // audit A1: a value that fits no range gets no tier (and no crown)
+  it("shows no tier when the value read fits no range", async () => {
+    const line = (t: string, y: number) => ({ t, x: 100, y, w: 300, h: 20 });
+    const scan = await matchReveal(
+      [line("MANCHETTES ANTIQUES", 10), line("+9999 au Score de Précision", 300)],
+      1,
+    );
+    expect(scan.badges.length).toBe(1);
+    expect(scan.badges[0].tier).toBeUndefined();
+    expect(scan.badges[0].outOfRange).toBe(true);
+  });
   it("finds the tier of each choice", async () => {
     const line = (t: string, y: number) => ({ t, x: 100, y, w: 300, h: 20 });
     const scan = await matchReveal(

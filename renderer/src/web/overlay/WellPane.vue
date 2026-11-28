@@ -22,7 +22,7 @@
           {{ tr("mods reconnus", "modifiers recognised") }})
         </summary>
         <div v-for="b in lastReveal.badges" :key="b.line + b.y" class="wos-last-row">
-          <span class="wos-tier">T{{ b.tier }}/{{ b.count }}</span> {{ b.line }}
+          <span class="wos-tier">{{ b.tier == null ? "T ?" : `T${b.tier}/${b.count}` }}</span> {{ b.line }}
         </div>
         <div class="ar-sub wos-last-read">
           {{ tr("Texte lu :", "Text read:") }} {{ (lastReveal.read ?? []).join(" · ") }}

@@ -13,8 +13,11 @@ import { loadWellData, spawnWeight, tiersForTags, type WellMod } from "./atziri-
 
 export interface RevealBadge {
   line: string;
-  tier: number;
-  count: number;
+  // undefined: tier unknown (value read outside every range, or modifier
+  // missing from the tier table): no tier is invented (audit A1, A2)
+  tier?: number;
+  count?: number;
+  outOfRange?: boolean; // the value read fits no tier of this modifier
   level: number;
   lord?: WellMod["lord"];
   name: string;
@@ -259,12 +262,16 @@ export async function matchReveal(
     const score = (e: Entry) => gap(e) + (!pair && e.mod.lines.length > 1 ? 0.5 : 0);
     entries = [...entries].sort((a, b) => score(a) - score(b) || b.mod.l - a.mod.l);
     const best = entries[0].mod;
+    // the value read sits outside every range of the closest modifier (OCR
+    // mistake, "%" read as "96"...): show the modifier without a tier
+    const outOfRange = gap(entries[0]) > 0;
     if (pair) i++; // next line used
-    const t = tierOnBase?.get(best.id) ?? tierAll.get(best.id);
+    const t = outOfRange ? undefined : (tierOnBase?.get(best.id) ?? tierAll.get(best.id));
     badges.push({
       line: l.t,
-      tier: t?.tier ?? 1,
-      count: t?.count ?? 1,
+      tier: t?.tier,
+      count: t?.count,
+      outOfRange,
       level: best.l,
       lord: best.lord,
       name: best.n,

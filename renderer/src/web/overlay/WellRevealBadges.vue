@@ -21,11 +21,14 @@
         b.lord ? `wr-lord-${b.lord.toLowerCase()}` : '',
       ]"
       :style="{ left: `${b.x + 12}px`, top: `${b.y + b.h / 2}px` }"
-      :title="b.name"
+      :title="b.tier == null ? `${b.name} · ${unknownTierHint(b)}` : b.name"
     >
       <i v-if="b.tier === 1" class="fas fa-crown rb-crown"></i>
-      <span class="rb-total">T{{ b.tier }}</span>
-      <span class="rb-sub">/ {{ b.count }}{{ b.approx ? " ~" : "" }}</span>
+      <template v-if="b.tier != null">
+        <span class="rb-total">T{{ b.tier }}</span>
+        <span class="rb-sub">/ {{ b.count }}{{ b.approx ? " ~" : "" }}</span>
+      </template>
+      <span v-else class="rb-total">T ?</span>
       <span class="rb-sub">· {{ tr("niv.", "lvl") }} {{ b.level }}</span>
       <span v-if="b.lord" class="wr-lord">{{ b.lord }}</span>
     </div>
@@ -34,7 +37,13 @@
 
 <script setup lang="ts">
 import { tr } from "@/web/atziri-lang";
-import { wellReveal as scan } from "./atziri-well-reveal";
+import { wellReveal as scan, type RevealBadge } from "./atziri-well-reveal";
+
+function unknownTierHint(b: RevealBadge) {
+  return b.outOfRange
+    ? tr("valeur lue hors de toutes les plages : tier inconnu", "value read outside every range: tier unknown")
+    : tr("mod absent de la table des tiers : tier inconnu", "modifier missing from the tier table: tier unknown");
+}
 </script>
 
 <style lang="postcss">

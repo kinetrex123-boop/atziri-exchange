@@ -22,6 +22,37 @@ Item Level: 82
 +38(36-40)% to Fire Resistance
 `;
 
+// the same item copied from the French client
+const BOOTS_FR = `Classe d'objet: Bottes
+Rareté: Rare
+Pas du Vent
+Grèves en fer
+--------
+Armure: 120
+--------
+Niveau de l'objet: 82
+--------
++12% à la Résistance au feu (rune)
+--------
+{ Suffixe : « de la Fournaise » (Palier : 2) — Élémentaire, Feu, Résistance }
++38(36-40)% à la Résistance au feu
+`;
+
+describe("Ctrl + B: French item", () => {
+  beforeAll(async () => {
+    setupTests({ language: "fr" });
+    await init("fr");
+  });
+
+  it("keeps the mod's own value when a rune has the same stat", async () => {
+    const parsed = parseClipboard(BOOTS_FR);
+    if (parsed.isErr()) throw new Error(String(parsed.error));
+    const pob = await toPobItem(parsed._unsafeUnwrap(), BOOTS_FR);
+    expect(pob.text).toContain("{rune}+12% to Fire Resistance");
+    expect(pob.text).toContain("\n+38% to Fire Resistance");
+  });
+});
+
 describe("Ctrl + B: item for Path of Building", () => {
   beforeAll(async () => {
     setupTests();
