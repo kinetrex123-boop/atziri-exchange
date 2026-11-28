@@ -79,6 +79,8 @@ function load(): SetupCard[] {
 }
 
 export const setups = shallowRef<SetupCard[]>(load());
+/** card whose "Note" page is open (null = the cards are shown) */
+export const openNoteCardId = shallowRef<number | null>(null);
 
 function save(list: SetupCard[]) {
   setups.value = list;

@@ -29,7 +29,7 @@
         </div>
 
         <div
-          v-for="(cat, ci) in data.categories"
+          v-for="(cat, ci) in categories"
           :key="cat.id"
           class="cr-panel cm-cat"
           :class="{ 'cm-drop': dropCat === cat.id && dropBefore == null }"
@@ -67,7 +67,7 @@
                 <i class="fas fa-arrow-up"></i>
               </button>
               <button
-                v-if="ci < data.categories.length - 1"
+                v-if="ci < categories.length - 1"
                 type="button"
                 class="cr-x"
                 :title="tr('Descendre', 'Move down')"
@@ -223,7 +223,7 @@
           </div>
         </div>
 
-        <p v-if="!data.categories.length" class="fm-muted">
+        <p v-if="!categories.length" class="fm-muted">
           {{
             tr(
               "Aucune catégorie : « + Catégorie » pour en créer une.",
@@ -245,11 +245,20 @@
       <template v-else>
         <div class="fm-head">
           <button type="button" class="fm-btn" @click="closeMethod">
-            <i class="fas fa-arrow-left"></i> {{ tr("Méthodes", "Methods") }}
+            <i class="fas fa-arrow-left"></i>
+            {{ isNote ? tr("Fiches", "Cards") : tr("Méthodes", "Methods") }}
           </button>
-          <span class="cr-bi cm-bi"><img :src="iconSrc(method)" alt="" /></span>
-          <b class="cm-title">{{ method.name }}</b>
-          <span class="fm-cap">· {{ catName(method.catId) }}</span>
+          <!-- Atziri Exchange: "Note" page of a Setup farm card -->
+          <template v-if="isNote">
+            <i class="fas fa-sticky-note cm-note-ico"></i>
+            <b class="cm-title">{{ noteTitle || tr("Fiche sans titre", "Untitled card") }}</b>
+            <span class="fm-cap">· {{ tr("Note", "Note") }}</span>
+          </template>
+          <template v-else>
+            <span class="cr-bi cm-bi"><img :src="iconSrc(method)" alt="" /></span>
+            <b class="cm-title">{{ method.name }}</b>
+            <span class="fm-cap">· {{ catName(method.catId) }}</span>
+          </template>
           <span class="fm-sp"></span>
           <!-- Atziri Exchange: never "Saved" when the storage refused the write -->
           <span v-if="!lastSaveOk" class="cm-saved cm-save-failed"
@@ -289,7 +298,7 @@
         </div>
 
         <!-- trade links (same as the "Bases à crafter" of Suivi) -->
-        <div class="cr-panel cm-links">
+        <div v-if="!isNote" class="cr-panel cm-links">
           <div class="fm-head">
             <span class="fm-cap">{{ tr("Liens trade", "Trade links") }}</span>
             <span class="fm-sp"></span>
@@ -696,6 +705,7 @@ import {
   openInHub,
   isTradeUrl,
   webTabUrls,
+  farmView,
 } from "./atziri-hub";
 import HubViewSwitch from "./HubViewSwitch.vue";
 import { CRAFT_BASE_ICONS, baseIcon } from "./atziri-craft-icons";
@@ -718,6 +728,7 @@ import {
   lastSaveOk,
   newId,
   BOARD_COLORS,
+  FARM_NOTES_CAT,
   type BoardItem,
   type CraftMethod,
   type MethodLink,
@@ -725,6 +736,20 @@ import {
 } from "./atziri-craft-methods";
 
 const isFr = computed(() => isFrench());
+
+// Atziri Exchange: the same notes board is the "Note" page of a Setup farm
+// card. noteId is then the page to show, without the list nor the trade links.
+const props = defineProps<{ noteId?: number | null; noteTitle?: string }>();
+const emit = defineEmits<{ (e: "close"): void }>();
+const isNote = computed(() => props.noteId != null);
+/** page shown: the farm note, else the method opened in the list */
+const activeId = computed(() =>
+  isNote.value ? props.noteId! : openMethodId.value,
+);
+/** the farm notes stay out of the list of the methods */
+const categories = computed(() =>
+  data.value.categories.filter((c) => c.id !== FARM_NOTES_CAT),
+);
 
 // ======================= list =======================
 function methodsOf(catId: number) {
@@ -887,7 +912,12 @@ function onDrop(catId: number, beforeId: number | null) {
 
 // ======================= notes page =======================
 const method = computed(
-  () => data.value.methods.find((m) => m.id === openMethodId.value) ?? null,
+  () =>
+    data.value.methods.find(
+      (m) =>
+        m.id === activeId.value &&
+        (isNote.value || m.catId !== FARM_NOTES_CAT),
+    ) ?? null,
 );
 
 function openMethod(id: number) {
@@ -900,10 +930,11 @@ function openMethod(id: number) {
 }
 function closeMethod() {
   endEdit();
-  openMethodId.value = null;
+  if (isNote.value) emit("close");
+  else openMethodId.value = null;
 }
 // leaving a page: forget its history and the images nobody uses any more
-watch(openMethodId, () => {
+watch(activeId, () => {
   sel.value = null;
   editing.value = null;
   draft.value = null;
@@ -915,7 +946,9 @@ watch(openMethodId, () => {
 });
 // method deleted from the other window
 watch(method, (m) => {
-  if (!m && openMethodId.value != null) openMethodId.value = null;
+  if (m || activeId.value == null) return;
+  if (isNote.value) emit("close");
+  else openMethodId.value = null;
 });
 
 // ---- lock ----
@@ -1493,7 +1526,9 @@ async function addImage(file: Blob, at?: { x: number; y: number }) {
 function pageActive() {
   return (
     hubVisible.value &&
-    hubTab.value === "methods" &&
+    (isNote.value
+      ? hubTab.value === "farm" && farmView.value === "setup"
+      : hubTab.value === "methods") &&
     method.value != null &&
     !method.value.locked
   );
@@ -1561,6 +1596,9 @@ onUnmounted(() => {
 <style lang="postcss">
 .cm-save-failed {
   color: #e05a4f;
+}
+.cm-note-ico {
+  color: var(--accent);
 }
 /* the list keeps the Suivi look (.fm-*, .cr-* of FarmPane / CraftPane) */
 .cm-wrap.cm-full {

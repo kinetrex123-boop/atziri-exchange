@@ -154,7 +154,17 @@
     </template>
 
     <FarmPane v-show="hubTab === 'farm' && farmView === 'journal'" />
-    <FarmSetupPane v-show="hubTab === 'farm' && farmView === 'setup'" />
+    <FarmSetupPane
+      v-show="hubTab === 'farm' && farmView === 'setup' && !farmNoteId"
+    />
+    <!-- Atziri Exchange: "Note" page of a Setup farm card -->
+    <CraftMethodsPane
+      v-if="farmNoteId"
+      v-show="hubTab === 'farm' && farmView === 'setup'"
+      :note-id="farmNoteId"
+      :note-title="farmNoteTitle"
+      @close="openNoteCardId = null"
+    />
     <StatsPane v-show="hubTab === 'stats'" />
     <CraftPane v-show="hubTab === 'crafttrack'" />
     <CraftMethodsPane v-show="hubTab === 'methods'" />
@@ -414,6 +424,8 @@ import FarmSetupPane from "./FarmSetupPane.vue";
 import StatsPane from "./StatsPane.vue";
 import CraftPane from "./CraftPane.vue";
 import CraftMethodsPane from "./CraftMethodsPane.vue";
+import { setups, openNoteCardId } from "./atziri-farm-setup";
+import { farmNoteOf } from "./atziri-craft-methods";
 import ConfirmBox from "./ConfirmBox.vue";
 import { brand, brandIconUrl } from "@/web/atziri-brand";
 import HistoryPane from "./HistoryPane.vue";
@@ -628,6 +640,16 @@ const props = defineProps<{ visible: boolean }>();
 
 // Atziri Exchange: page opened on another address than usual (port busy)
 const wrongAddress = onWrongAddress();
+
+// Atziri Exchange: "Note" page of the Setup farm card being read
+const farmNoteId = computed(() =>
+  openNoteCardId.value == null
+    ? null
+    : (farmNoteOf(openNoteCardId.value)?.id ?? null),
+);
+const farmNoteTitle = computed(
+  () => setups.value.find((c) => c.id === openNoteCardId.value)?.title ?? "",
+);
 
 const ninja = usePoeninja();
 const leagues = useLeagues();

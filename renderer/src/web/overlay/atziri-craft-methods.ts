@@ -2,6 +2,9 @@
 // categories (League start, Avancé by default, more can be added). Each method
 // has a trade link and a free notes board (text, arrows, frames, pasted images
 // that can be moved and resized), which can be locked.
+// The "Note" page of each Setup farm card is the same notes board: it is kept
+// here as a method of a hidden category (FARM_NOTES_CAT), so its images, its
+// backup and the sync between windows work the same way.
 // Saved on this PC: methods in the localStorage, images in IndexedDB (too big
 // for localStorage). The overlay and the detached window stay in sync.
 import { shallowRef } from "vue";
@@ -38,6 +41,8 @@ export interface CraftMethod {
   icon: string;
   /** the user's own icon (small PNG data URL), shown instead of `icon` */
   customIcon?: string;
+  /** set on the notes page of a Setup farm card: the id of that card */
+  farmCardId?: number;
   links: MethodLink[];
   locked: boolean;
   items: BoardItem[];
@@ -63,6 +68,9 @@ export const BOARD_COLORS = [
 ];
 
 const KEY = "atziri-craft-methods";
+
+/** hidden category holding the notes pages of the Setup farm cards */
+export const FARM_NOTES_CAT = -1;
 
 function defaults(): MethodsData {
   return {
@@ -137,6 +145,7 @@ function clean(raw: Raw): MethodsData {
       m.customIcon.startsWith("data:image/")
         ? { customIcon: m.customIcon }
         : {}),
+      ...(typeof m.farmCardId === "number" ? { farmCardId: m.farmCardId } : {}),
       links: cleanLinks(m),
       locked: m.locked === true,
       items: (Array.isArray(m.items) ? m.items : [])
@@ -221,6 +230,8 @@ export function moveCategory(id: number, delta: -1 | 1) {
   const i = list.findIndex((c) => c.id === id);
   const j = i + delta;
   if (i === -1 || j < 0 || j >= list.length) return;
+  // the hidden category of the farm notes never moves
+  if (list[j].id === FARM_NOTES_CAT) return;
   [list[i], list[j]] = [list[j], list[i]];
   save({ ...methodsData.value, categories: list });
 }
@@ -272,6 +283,43 @@ export function placeMethod(
   if (at === -1) list.push(moved);
   else list.splice(at, 0, moved);
   save({ ...d, methods: list });
+}
+
+// ---- "Note" pages of the Setup farm cards ----
+export function farmNoteOf(cardId: number): CraftMethod | null {
+  return (
+    methodsData.value.methods.find(
+      (m) => m.catId === FARM_NOTES_CAT && m.farmCardId === cardId,
+    ) ?? null
+  );
+}
+
+/** id of the notes page of a farm card, created the first time */
+export function ensureFarmNote(cardId: number, title: string): number {
+  const found = farmNoteOf(cardId);
+  if (found) return found.id;
+  const d = methodsData.value;
+  const categories = d.categories.some((c) => c.id === FARM_NOTES_CAT)
+    ? d.categories
+    : [...d.categories, { id: FARM_NOTES_CAT, name: "Notes Setup farm" }];
+  const m: CraftMethod = {
+    id: newId(),
+    catId: FARM_NOTES_CAT,
+    name: title,
+    icon: "armour",
+    farmCardId: cardId,
+    links: [],
+    locked: false,
+    items: [],
+  };
+  save({ categories, methods: [...d.methods, m] });
+  return m.id;
+}
+
+/** the farm card was deleted: its notes page (and its images) go too */
+export function deleteFarmNote(cardId: number) {
+  const m = farmNoteOf(cardId);
+  if (m) deleteMethod(m.id);
 }
 
 // ---- images (IndexedDB) ----

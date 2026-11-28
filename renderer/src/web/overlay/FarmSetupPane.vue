@@ -171,6 +171,21 @@
             </button>
           </div>
 
+          <!-- Atziri Exchange: "Note" page of the card (same board as the craft methods) -->
+          <button
+            type="button"
+            class="fs-note"
+            :class="{ has: hasNote(card.id) }"
+            :title="
+              tr(
+                'Page de notes de la fiche (texte, flèches, cadres, images)',
+                'Notes page of the card (text, arrows, frames, images)',
+              )
+            "
+            @click="openNote(card)"
+          >
+            <i class="fas fa-sticky-note"></i> {{ tr("Note", "Note") }}
+          </button>
           <input
             class="fs-title"
             :readonly="card.locked"
@@ -453,10 +468,17 @@ import {
   removeImage,
   setColor,
   setLocked,
+  openNoteCardId,
   THUMB_SLOTS,
   type ImageSlot,
   type SetupCard,
 } from "./atziri-farm-setup";
+import {
+  ensureFarmNote,
+  farmNoteOf,
+  deleteFarmNote,
+  updateMethod,
+} from "./atziri-craft-methods";
 
 const isFr = computed(() => isFrench());
 const strip = shallowRef<HTMLElement | null>(null);
@@ -488,9 +510,27 @@ async function duplicate(id: number) {
 }
 async function remove(card: SetupCard) {
   const name = card.title || tr("cette fiche", "this card");
-  if (await askConfirm(tr(`Supprimer « ${name} » ?`, `Delete "${name}"?`))) {
+  const question = hasNote(card.id)
+    ? tr(`Supprimer « ${name} » et sa note ?`, `Delete "${name}" and its note?`)
+    : tr(`Supprimer « ${name} » ?`, `Delete "${name}"?`);
+  if (await askConfirm(question)) {
     await deleteCard(card.id);
+    deleteFarmNote(card.id);
   }
+}
+
+// ---- "Note" page of a card ----
+function hasNote(cardId: number) {
+  return (farmNoteOf(cardId)?.items.length ?? 0) > 0;
+}
+function openNote(card: SetupCard) {
+  const id = ensureFarmNote(card.id, card.title);
+  // a note already filled opens locked (nothing moves by mistake)
+  const m = farmNoteOf(card.id);
+  if (m && m.items.length && !m.locked)
+    updateMethod(id, (x) => ({ ...x, locked: true }));
+  activeId.value = card.id;
+  openNoteCardId.value = card.id;
 }
 
 // ---- left / right scrolling ----
@@ -664,6 +704,7 @@ function onPaste(e: ClipboardEvent) {
     !hubVisible.value ||
     hubTab.value !== "farm" ||
     farmView.value !== "setup" ||
+    openNoteCardId.value != null ||
     activeId.value == null ||
     isLocked(activeId.value)
   )
@@ -891,6 +932,37 @@ onUnmounted(() => {
 }
 
 /* title */
+/* "Note" button, in the free space left of the title */
+.ar-hub .fs-note {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(15% - 6px);
+  height: 34px;
+  padding: 0 9px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.ar-hub .fs-note:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ar-hub .fs-note.has {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--fg);
+}
+.ar-hub .fs-note.has i {
+  color: var(--accent);
+}
 .ar-hub .fs-title {
   align-self: center;
   width: 70%;
