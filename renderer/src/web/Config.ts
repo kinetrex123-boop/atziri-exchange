@@ -1,4 +1,5 @@
 import { reactive as deepReactive, shallowRef, toRaw } from "vue";
+import { onWrongAddress } from "./atziri-storage";
 import isDeepEqual from "fast-deep-equal";
 import { Host } from "@/web/background/IPC";
 import { HostConfig, ShortcutAction } from "@ipc/types";
@@ -94,6 +95,9 @@ export async function initConfig() {
  * connection to the main process is up (saveConfig needs it).
  */
 export function atziriMigrations() {
+  // on another address than usual (port busy), the flags below look unset:
+  // replaying the migrations would undo the player's own settings
+  if (onWrongAddress()) return;
   // trade site in English (www.pathofexile.com) by default;
   // can still be changed in Settings > General
   try {

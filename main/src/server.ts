@@ -176,6 +176,9 @@ server.on("upgrade", (req, socket, head) => {
   });
 });
 
+/** true when the fixed port was busy and the page runs on another one */
+export let atziriPortBusy = false;
+
 export async function startServer(
   appUpdater: AppUpdater,
   logger: Logger,
@@ -244,15 +247,26 @@ export async function startServer(
       });
     });
 
-  try {
-    return await listen(port);
-  } catch (e) {
-    // fixed port busy: fall back to any free port
-    if (port === ATZIRI_PORT && (e as NodeJS.ErrnoException).code === "EADDRINUSE") {
+  // fixed port busy: often the previous Atziri still closing, so try again
+  // for a few seconds before giving up
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await listen(port);
+    } catch (e) {
+      const busy =
+        port === ATZIRI_PORT &&
+        (e as NodeJS.ErrnoException).code === "EADDRINUSE";
+      if (!busy) throw e;
+      if (attempt < 5) {
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+      // still busy: start anyway on a free port, the page then says that the
+      // saved data is not visible (see atziriPortBusy and atziri-storage.ts)
       logger.write(`warn [Server] Port ${ATZIRI_PORT} busy, using a random port.`);
+      atziriPortBusy = true;
       return await listen(0);
     }
-    throw e;
   }
 }
 

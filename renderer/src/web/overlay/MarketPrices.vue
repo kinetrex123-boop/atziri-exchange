@@ -123,6 +123,26 @@
       </button>
     </a>
 
+    <!-- Atziri Exchange: the saved data is in danger: say it on the page -->
+    <div v-if="wrongAddress" class="ar-update ar-alert">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{
+        tr(
+          `Atziri n'a pas pu utiliser son adresse habituelle (port ${ATZIRI_PORT} occupé) : tes données (farm, craft, favoris…) ne sont pas visibles et ce que tu saisis maintenant ne sera pas gardé. Ferme Atziri (et ce qui utilise ce port), puis relance-le.`,
+          `Atziri could not use its usual address (port ${ATZIRI_PORT} busy): your data (farm, craft, favorites…) is not visible and what you type now will not be kept. Close Atziri (and whatever uses this port), then start it again.`,
+        )
+      }}
+    </div>
+    <div v-if="storageError" class="ar-update ar-alert">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{
+        tr(
+          "Un enregistrement a échoué (stockage plein ou indisponible) : la dernière modification risque d'être perdue au redémarrage. Fais une sauvegarde dans Atziri réglage.",
+          "A save failed (storage full or unavailable): the last change may be lost on restart. Make a backup in Atziri settings.",
+        )
+      }}
+    </div>
+
     <!-- One web page per tab, loaded the first time the tab is opened, then
          kept alive (v-show) so each keeps its state -->
     <template v-for="tab in WEB_TABS" :key="tab.id">
@@ -401,6 +421,7 @@ import WellPane from "./WellPane.vue";
 import RunesPane from "./RunesPane.vue";
 import ConverterBox from "./ConverterBox.vue";
 import { setRates, registerRatesRefresher } from "./atziri-money";
+import { storageError, onWrongAddress, ATZIRI_PORT } from "@/web/atziri-storage";
 import {
   favorites,
   alertThreshold,
@@ -604,6 +625,9 @@ const CURRENCY_ICONS: Record<string, string> = {
 };
 
 const props = defineProps<{ visible: boolean }>();
+
+// Atziri Exchange: page opened on another address than usual (port busy)
+const wrongAddress = onWrongAddress();
 
 const ninja = usePoeninja();
 const leagues = useLeagues();
@@ -1543,6 +1567,11 @@ const rows = computed(() => {
   background: var(--surface);
   color: var(--fg);
   text-decoration: none;
+}
+
+.ar-hub .ar-alert {
+  border-color: #e05a4f;
+  color: #f0b0a8;
 }
 
 .ar-hub .ar-update:hover {

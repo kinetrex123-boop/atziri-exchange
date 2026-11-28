@@ -1,9 +1,9 @@
 "use strict";
 
-import { app, systemPreferences } from "electron";
+import { app, systemPreferences, dialog } from "electron";
 import { uIOhook } from "uiohook-napi";
 import os from "node:os";
-import { startServer, eventPipe, server } from "./server";
+import { startServer, eventPipe, server, atziriPortBusy } from "./server";
 import { Logger } from "./RemoteLogger";
 import { GameWindow } from "./windowing/GameWindow";
 import { OverlayWindow } from "./windowing/OverlayWindow";
@@ -173,6 +173,20 @@ app.on("browser-window-created", (_e, win) => {
         setupAtziriCraft(server);
         const port = await startServer(appUpdater, logger);
         hubPort = port;
+        // Atziri Exchange: the saved data is filed by address: say it when the
+        // page could not get its usual one
+        if (atziriPortBusy) {
+          dialog
+            .showMessageBox({
+              type: "warning",
+              title: "Atziri Exchange",
+              message:
+                "Le port 41917 est déjà utilisé (un autre Atziri est peut-être encore ouvert).",
+              detail:
+                "Tes données (journal de farm, craft, favoris…) ne seront pas visibles et ce que tu saisis maintenant ne sera pas gardé. Ferme Atziri et ce qui utilise ce port, puis relance-le.\n\nPort 41917 is busy: your data will not be visible. Close Atziri, then start it again.",
+            })
+            .catch(() => undefined);
+        }
         // TODO: move up (currently crashes)
         logger.write(`info ${os.type()} ${os.release} / v${app.getVersion()}`);
         overlay.loadAppPage(port);

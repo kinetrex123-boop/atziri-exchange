@@ -251,7 +251,12 @@
           <b class="cm-title">{{ method.name }}</b>
           <span class="fm-cap">· {{ catName(method.catId) }}</span>
           <span class="fm-sp"></span>
-          <span v-if="savedFlash" class="cm-saved"
+          <!-- Atziri Exchange: never "Saved" when the storage refused the write -->
+          <span v-if="!lastSaveOk" class="cm-saved cm-save-failed"
+            ><i class="fas fa-exclamation-triangle"></i>
+            {{ tr("Non enregistré", "Not saved") }}</span
+          >
+          <span v-else-if="savedFlash" class="cm-saved"
             ><i class="fas fa-check"></i> {{ tr("Sauvegardé", "Saved") }}</span
           >
           <button
@@ -710,6 +715,7 @@ import {
   storeImage,
   makeCustomIcon,
   gcImages,
+  lastSaveOk,
   newId,
   BOARD_COLORS,
   type BoardItem,
@@ -1553,6 +1559,9 @@ onUnmounted(() => {
 </script>
 
 <style lang="postcss">
+.cm-save-failed {
+  color: #e05a4f;
+}
 /* the list keeps the Suivi look (.fm-*, .cr-* of FarmPane / CraftPane) */
 .cm-wrap.cm-full {
   align-self: stretch;

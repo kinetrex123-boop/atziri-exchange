@@ -5,6 +5,7 @@
 // Saved on this PC: methods in the localStorage, images in IndexedDB (too big
 // for localStorage). The overlay and the detached window stay in sync.
 import { shallowRef } from "vue";
+import { readJson, writeItem, setAside } from "@/web/atziri-storage";
 
 export type BoardKind = "text" | "arrow" | "rect" | "image";
 
@@ -145,24 +146,36 @@ function clean(raw: Raw): MethodsData {
   return { categories, methods };
 }
 
+/**
+ * true when something was saved but could not be read: the raw value is kept
+ * aside and no image is ever deleted until the next launch (audit C4)
+ */
+let readFailed = false;
+
 function load(): MethodsData {
-  try {
-    const saved = localStorage.getItem(KEY);
-    return saved == null ? defaults() : clean(JSON.parse(saved));
-  } catch {
+  const { value, raw, failed } = readJson(KEY);
+  if (failed) {
+    readFailed = true;
     return defaults();
   }
+  if (value == null) return defaults();
+  const v = value as Raw;
+  if (!v || typeof v !== "object" || !Array.isArray(v.categories)) {
+    setAside(KEY, raw);
+    readFailed = true;
+    return defaults();
+  }
+  return clean(v);
 }
 
 export const methodsData = shallowRef<MethodsData>(load());
+/** false when the last save was refused by the storage */
+export const lastSaveOk = shallowRef(true);
 
 function save(data: MethodsData) {
   methodsData.value = data;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(data));
-  } catch {
-    // storage unavailable
-  }
+  // a failed write is shown on the page instead of "Sauvegardé" (audit C5)
+  lastSaveOk.value = writeItem(KEY, JSON.stringify(data));
 }
 
 window.addEventListener("storage", (e) => {
@@ -338,6 +351,8 @@ export async function loadImages() {
  * closed (its undo history is gone then) and at start.
  */
 export async function gcImages() {
+  // the methods could not be read: their images are kept (audit C4)
+  if (readFailed) return;
   const used = usedImages();
   const keys = await idbKeys();
   const map = new Map(imageUrls.value);
@@ -407,8 +422,22 @@ export async function backupMethods(): Promise<{
 }
 
 /** replaces all the methods (and their images) with the ones of a backup */
+/**
+ * Number of methods a backup really holds once checked (the same check as
+ * when it is restored); null when it is not a list of methods at all.
+ */
+export function countRestorableMethods(raw: unknown): number | null {
+  const r = raw as Raw;
+  if (!r || typeof r !== "object" || !Array.isArray(r.categories)) return null;
+  return clean(r).methods.length;
+}
+
 export async function restoreMethods(raw: unknown, images: Map<number, Blob>) {
+  // never replace the methods with the empty defaults of a broken file (R2)
+  if (countRestorableMethods(raw) == null)
+    throw new Error("invalid craft methods");
   const data = clean(raw as Raw);
+  readFailed = false;
   openMethodId.value = null;
   save(data);
   for (const id of usedImages()) {

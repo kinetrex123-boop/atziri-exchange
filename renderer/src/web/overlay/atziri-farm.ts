@@ -3,6 +3,7 @@
 // loots, time), totals. Saved on this PC (localStorage) and kept in sync
 // between the overlay and the detached window.
 import { shallowRef, computed } from "vue";
+import { readJson, writeItem, setAside, guardVersion, DATA_VERSION } from "@/web/atziri-storage";
 import type { ClientLogEvent } from "@ipc/types";
 
 export interface FarmMap {
@@ -29,6 +30,7 @@ export interface FarmSession {
 }
 
 interface FarmState {
+  v?: number; // version of this structure (atziri-storage DATA_VERSION)
   sessions: FarmSession[];
   currentId: number;
   autoTimer: boolean;
@@ -88,9 +90,15 @@ function lastAlive() {
 
 function load(atLaunch = false): FarmState {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
+    const { value, raw } = readJson(KEY);
+    // saved by a newer version: a copy is kept aside first
+    guardVersion(KEY, value, raw);
+    const s = value as Partial<FarmState> | null;
+    if (raw != null && !(s && Array.isArray(s.sessions)))
+      setAside(KEY, raw); // unreadable journal: never lost
     if (s && Array.isArray(s.sessions) && s.sessions.length) {
       const state: FarmState = {
+        v: DATA_VERSION,
         sessions: s.sessions,
         currentId: s.currentId ?? s.sessions[0].id,
         autoTimer: s.autoTimer !== false,
@@ -98,11 +106,7 @@ function load(atLaunch = false): FarmState {
       // the time since the last sign of life (plus one minute at most) was
       // spent with the app or the PC closed: not inside the map
       if (atLaunch && closeStaleTimers(state, lastAlive() + ALIVE_EVERY_MS)) {
-        try {
-          localStorage.setItem(KEY, JSON.stringify(state));
-        } catch {
-          // storage unavailable
-        }
+        writeItem(KEY, JSON.stringify(state));
       }
       return state;
     }
@@ -110,7 +114,12 @@ function load(atLaunch = false): FarmState {
     // unreadable storage
   }
   const first = newSession("Session 1");
-  return { sessions: [first], currentId: first.id, autoTimer: true };
+  return {
+    v: DATA_VERSION,
+    sessions: [first],
+    currentId: first.id,
+    autoTimer: true,
+  };
 }
 
 // only the main overlay window closes the timers left open (the detached
@@ -131,11 +140,8 @@ setInterval(() => {
 }, ALIVE_EVERY_MS);
 
 function save() {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(farm.value));
-  } catch {
-    // storage unavailable
-  }
+  // a failed write is shown on the page (atziri-storage)
+  writeItem(KEY, JSON.stringify({ ...farm.value, v: DATA_VERSION }));
 }
 
 // the other window (overlay / detached window) changed the data

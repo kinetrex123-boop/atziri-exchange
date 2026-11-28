@@ -252,14 +252,14 @@
       </div>
     </div>
 
-    <!-- Backup of the Farm > Setup cards and of the craft methods -->
+    <!-- Backup of everything Atziri saves on this PC -->
     <div class="mb-4 mt-4">
       <div class="flex-1 mb-1">{{ tr("Sauvegarde", "Backup") }}</div>
       <p class="text-gray-500 text-sm mb-2">
         {{
           tr(
-            "Fiches Farm > Setup et méthodes de craft, images comprises, dans un fichier .json : pour garder une copie ou les retrouver sur un autre PC.",
-            "Farm > Setup cards and craft methods, images included, in one .json file: to keep a copy or get them back on another PC.",
+            "Tout ce qu'Atziri garde sur ce PC (journal de farm, fiches Setup, sessions et méthodes de craft, favoris, historique, thèmes…), images comprises, dans un fichier .json : pour garder une copie ou tout retrouver sur un autre PC.",
+            "Everything Atziri keeps on this PC (farm journal, Setup cards, craft sessions and methods, favorites, history, themes…), images included, in one .json file: to keep a copy or get it all back on another PC.",
           )
         }}
       </p>
@@ -276,8 +276,8 @@
         <p class="mb-2">
           {{
             tr(
-              `Remplacer tes fiches Setup et tes méthodes par celles du fichier (${backupPending.setups} fiche(s), ${backupPending.methods} méthode(s)${backupPending.savedAt ? ", du " + new Date(backupPending.savedAt).toLocaleString(dateLocale()) : ""}) ? Celles d'aujourd'hui seront effacées.`,
-              `Replace your Setup cards and methods with the ones of the file (${backupPending.setups} card(s), ${backupPending.methods} method(s)${backupPending.savedAt ? ", from " + new Date(backupPending.savedAt).toLocaleString(dateLocale()) : ""})? The current ones will be erased.`,
+              `Remplacer tes données par celles du fichier (${backupPending.setups} fiche(s) Setup, ${backupPending.methods} méthode(s), ${backupPending.keys} autre(s) donnée(s)${backupPending.savedAt ? ", du " + new Date(backupPending.savedAt).toLocaleString(dateLocale()) : ""}) ? Tes données actuelles seront d'abord téléchargées dans un fichier « …-avant-import.json ».`,
+              `Replace your data with the file's (${backupPending.setups} Setup card(s), ${backupPending.methods} method(s), ${backupPending.keys} other data${backupPending.savedAt ? ", from " + new Date(backupPending.savedAt).toLocaleString(dateLocale()) : ""})? Your current data is first downloaded to a "…-avant-import.json" file.`,
             )
           }}
         </p>
@@ -1341,8 +1341,8 @@ async function doExport() {
   try {
     const n = await exportBackup();
     backupMsg.value = tr(
-      `Exporté : ${n.setups} fiche(s) Setup, ${n.methods} méthode(s). Le fichier est dans tes Téléchargements.`,
-      `Exported: ${n.setups} Setup card(s), ${n.methods} method(s). The file is in your Downloads.`,
+      `Exporté : ${n.setups} fiche(s) Setup, ${n.methods} méthode(s) et ${n.keys} autre(s) donnée(s) (journal de farm, sessions de craft, favoris, historique, thèmes…). Le fichier est dans tes Téléchargements.`,
+      `Exported: ${n.setups} Setup card(s), ${n.methods} method(s) and ${n.keys} other data (farm journal, craft sessions, favorites, history, themes…). The file is in your Downloads.`,
     );
   } catch {
     backupError.value = true;
@@ -1371,11 +1371,14 @@ async function doImport() {
   backupBusy.value = true;
   backupError.value = false;
   try {
-    await importBackup(b);
+    // the current data is downloaded first ("…-avant-import.json")
+    const reload = await importBackup(b);
     backupMsg.value = tr(
-      `Importé : ${b.setups} fiche(s) Setup, ${b.methods} méthode(s).`,
-      `Imported: ${b.setups} Setup card(s), ${b.methods} method(s).`,
+      `Importé : ${b.setups} fiche(s) Setup, ${b.methods} méthode(s), ${b.keys} autre(s) donnée(s). Tes données d'avant sont dans « atziri-sauvegarde-…-avant-import.json » (Téléchargements).`,
+      `Imported: ${b.setups} Setup card(s), ${b.methods} method(s), ${b.keys} other data. Your previous data is in "atziri-sauvegarde-…-avant-import.json" (Downloads).`,
     );
+    // the journal, sessions, favorites... are read again from the storage
+    if (reload) setTimeout(() => window.location.reload(), 2500);
   } catch {
     backupError.value = true;
     backupMsg.value = tr("L'import a échoué.", "The import failed.");

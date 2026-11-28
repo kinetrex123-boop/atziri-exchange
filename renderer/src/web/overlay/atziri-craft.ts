@@ -8,6 +8,7 @@ import { Host } from "@/web/background/IPC";
 import { ITEM_BY_REF } from "@/assets/data";
 import { useLeagues } from "@/web/background/Leagues";
 import { setRates } from "./atziri-money";
+import { readJson, writeItem, setAside, guardVersion, DATA_VERSION } from "@/web/atziri-storage";
 
 export interface CraftEntry {
   key: string; // "<poe.ninja category>|<English name>"
@@ -54,7 +55,12 @@ function newSession(title: string): CraftSession {
 
 function load(atLaunch = false): CraftState {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
+    const { value, raw } = readJson(KEY);
+    guardVersion(KEY, value, raw); // saved by a newer version: copy kept aside
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = value as any;
+    if (raw != null && !(s && Array.isArray(s.sessions)))
+      setAside(KEY, raw); // unreadable sessions: never lost
     if (s && Array.isArray(s.sessions) && s.sessions.length) {
       return {
         sessions: s.sessions,
@@ -87,11 +93,8 @@ export const craft = shallowRef<CraftState>(
 );
 
 function save() {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(craft.value));
-  } catch {
-    // storage unavailable
-  }
+  // a failed write is shown on the page (atziri-storage)
+  writeItem(KEY, JSON.stringify({ ...craft.value, v: DATA_VERSION }));
 }
 
 // the other window (overlay / detached window) changed the data

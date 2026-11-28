@@ -3,6 +3,7 @@
 // Cards are saved on this PC (localStorage), screenshots in IndexedDB (too big
 // for localStorage). The overlay and the detached window stay in sync.
 import { shallowRef } from "vue";
+import { readJson, writeItem, setAside } from "@/web/atziri-storage";
 
 export const LINK_SLOTS = 5;
 /** the 3 small images at the bottom right of a card */
@@ -67,22 +68,22 @@ function clean(raw: unknown): SetupCard[] {
 }
 
 function load(): SetupCard[] {
-  try {
-    return clean(JSON.parse(localStorage.getItem(KEY) ?? "[]"));
-  } catch {
+  // an unreadable value is kept aside (atziri-storage) before being replaced
+  const { value, raw } = readJson(KEY);
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    setAside(KEY, raw);
     return [];
   }
+  return clean(value);
 }
 
 export const setups = shallowRef<SetupCard[]>(load());
 
 function save(list: SetupCard[]) {
   setups.value = list;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(list));
-  } catch {
-    // storage unavailable
-  }
+  // a failed write is shown on the page (atziri-storage)
+  writeItem(KEY, JSON.stringify(list));
 }
 
 window.addEventListener("storage", (e) => {
