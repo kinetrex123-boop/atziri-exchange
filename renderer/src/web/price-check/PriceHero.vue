@@ -77,45 +77,68 @@ function inBestUnit(div: number) {
   };
 }
 
-function confidenceView(level: "low" | "medium" | "high") {
+function confidenceView(
+  level: "low" | "medium" | "high",
+  kept: number,
+  sellers: number,
+) {
+  // what the level was computed on, in the tooltip
+  const basis = tr(
+    `${kept} annonce${kept > 1 ? "s" : ""} retenue${kept > 1 ? "s" : ""}, ${sellers} vendeur${sellers > 1 ? "s" : ""}`,
+    `${kept} listing${kept > 1 ? "s" : ""} kept, ${sellers} seller${sellers > 1 ? "s" : ""}`,
+  );
   switch (level) {
     case "low":
       return {
         level,
         label: tr("Fiabilité faible", "Low confidence"),
         hint: tr(
-          "Moins de 5 annonces ou prix très dispersés",
-          "Under 5 listings or prices all over the place",
+          `${basis}. Moins de 4 annonces, moins de 3 vendeurs ou prix très dispersés : vérifie les filtres.`,
+          `${basis}. Under 4 listings, under 3 sellers or prices all over the place: check the filters.`,
         ),
       };
     case "medium":
       return {
         level,
         label: tr("Fiabilité moyenne", "Medium confidence"),
-        hint: tr("Entre 5 et 20 annonces", "Between 5 and 20 listings"),
+        hint: tr(
+          `${basis}. Peu d'annonces ou de vendeurs, ou prix assez dispersés.`,
+          `${basis}. Few listings or sellers, or prices rather spread out.`,
+        ),
       };
     default:
       return {
         level,
         label: tr("Fiabilité bonne", "Good confidence"),
         hint: tr(
-          "Plus de 20 annonces aux prix cohérents",
-          "Over 20 listings with consistent prices",
+          `${basis}, prix cohérents.`,
+          `${basis}, consistent prices.`,
         ),
       };
   }
+}
+
+function timeText(at: number) {
+  return new Date(at).toLocaleTimeString(tr("fr-FR", "en-GB"), {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 const view = computed(() => {
   // 1) trade search results: range of the cheapest listings
   const s = tradeSummary.value;
   if (props.tradeSearch && s) {
-    // like PoE2 MultiTool: one suggested price (median once the odd listings
-    // are left out), then the range, the quick-sale price and the cheapest
+    // one suggested price (median of the cheapest listings once the odd ones
+    // are left out), then the range, the cheapest listing and a quick-sale price
     const main = inBestUnit(s.median);
     const low = inBestUnit(s.low);
     const high = inBestUnit(s.high);
+    const cheapest = inBestUnit(s.cheapest);
+    const sell = inBestUnit(s.sell);
     const pl = (n: number) => (n > 1 ? "s" : "");
+    const kept = s.sample - s.ignored - s.ignoredHigh;
+    const notes: string[] = [];
     const left: string[] = [];
     if (s.ignored > 0)
       left.push(
@@ -128,18 +151,25 @@ const view = computed(() => {
           `${s.ignoredHigh} too expensive`,
         ),
       );
-    const ignoredText = left.length
-      ? tr(
-          ` · ignorées : ${left.join(", ")}`,
-          ` · left out: ${left.join(", ")}`,
-        )
-      : "";
+    if (left.length)
+      notes.push(
+        tr(`ignorées : ${left.join(", ")}`, `left out: ${left.join(", ")}`),
+      );
+    if (s.unconverted > 0)
+      notes.push(
+        tr(
+          `${s.unconverted} annonce${pl(s.unconverted)} en exalté/chaos non comptée${pl(s.unconverted)} : taux pas encore chargé`,
+          `${s.unconverted} exalted/chaos listing${pl(s.unconverted)} not counted: rate not loaded yet`,
+        ),
+      );
+    if (s.ratesAt)
+      notes.push(tr(`taux du ${timeText(s.ratesAt)}`, `rates of ${timeText(s.ratesAt)}`));
     return {
       caption: tr(
-        `Prix conseillé · ${s.count} annonce${pl(s.count)}`,
-        `Suggested price · ${s.count} listing${pl(s.count)}`,
+        `Médiane des ${kept} moins chères · ${s.count} annonce${pl(s.count)}`,
+        `Median of the ${kept} cheapest · ${s.count} listing${pl(s.count)}`,
       ),
-      confidence: confidenceView(s.confidence),
+      confidence: confidenceView(s.confidence, kept, s.sellers),
       main: main.text,
       mainIcon: main.icon,
       mainUnit: main.unit,
@@ -149,12 +179,26 @@ const view = computed(() => {
           text:
             low.unit === high.unit && low.text !== high.text
               ? `${low.text} – ${high.text}`
-              : low.text,
-          icon: low.icon,
-          unit: low.unit,
+              : low.unit === high.unit
+                ? low.text
+                : `${low.text} ${low.unit} – ${high.text} ${high.unit}`,
+          icon: low.unit === high.unit ? low.icon : undefined,
+          unit: low.unit === high.unit ? low.unit : "",
+        },
+        {
+          label: tr("Moins chère", "Cheapest"),
+          text: cheapest.text,
+          icon: cheapest.icon,
+          unit: cheapest.unit,
+        },
+        {
+          label: tr("À vendre ≈", "To sell ≈"),
+          text: sell.text,
+          icon: sell.icon,
+          unit: sell.unit,
         },
       ],
-      sub: ignoredText ? ignoredText.replace(/^ · /, "") : "",
+      sub: notes.join(" · "),
     };
   }
   // 2) poe.ninja price (currency, uniques, gems...)
@@ -230,11 +274,18 @@ const view = computed(() => {
 
 .atz-hero-right {
   flex: none;
-  max-width: 50%;
+  max-width: 62%;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: flex-start;
   gap: 4px;
+}
+
+/* confidence on its own line, the three cells (range, cheapest, to sell) under it */
+.atz-hero-right > .atz-hero-conf {
+  flex-basis: 100%;
+  justify-content: flex-end;
 }
 
 .atz-hero-cap {
@@ -319,7 +370,7 @@ const view = computed(() => {
   color: theme("colors.gray.400");
 }
 
-/* Fourchette: under the confidence, on the right */
+/* Fourchette, Moins chère, À vendre: under the confidence, on the right */
 .atz-hero-cell {
   min-width: 0;
   max-width: 100%;

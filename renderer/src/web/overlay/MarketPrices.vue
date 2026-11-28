@@ -400,7 +400,7 @@ import HistoryPane from "./HistoryPane.vue";
 import WellPane from "./WellPane.vue";
 import RunesPane from "./RunesPane.vue";
 import ConverterBox from "./ConverterBox.vue";
-import { setRates } from "./atziri-money";
+import { setRates, registerRatesRefresher } from "./atziri-money";
 import {
   favorites,
   alertThreshold,
@@ -1170,12 +1170,22 @@ function sparkPoints(data: Array<number | null>): string {
   return pts.join(" ");
 }
 
+// Atziri Exchange: the newest live entry of the current league that carries
+// exchange rates (the rates of another league are never reused)
+const ratesEntry = computed<LiveCategory | undefined>(() => {
+  const prefix = `${leagues.selectedId.value}|`;
+  let best: LiveCategory | undefined;
+  for (const [key, entry] of live.value) {
+    if (!key.startsWith(prefix)) continue;
+    if (!entry.chaosPerDivine && !entry.exaltedPerDivine) continue;
+    if (!best || entry.at > best.at) best = entry;
+  }
+  return best;
+});
+
 // Chaos per Divine, from live data or the background price snapshot
 const chaosPerDivine = computed<number | undefined>(() => {
-  if (liveEntry.value?.chaosPerDivine) return liveEntry.value.chaosPerDivine;
-  for (const entry of live.value.values()) {
-    if (entry.chaosPerDivine) return entry.chaosPerDivine;
-  }
+  if (ratesEntry.value?.chaosPerDivine) return ratesEntry.value.chaosPerDivine;
   const cur = ninja.xchgRateCurrency.value;
   if (cur?.id === "chaos" && ninja.xchgRate.value) return ninja.xchgRate.value;
   return undefined;
@@ -1183,12 +1193,8 @@ const chaosPerDivine = computed<number | undefined>(() => {
 
 // Exalted per Divine, from live data or the background price snapshot
 const exaltedPerDivine = computed<number | undefined>(() => {
-  if (liveEntry.value?.exaltedPerDivine)
-    return liveEntry.value.exaltedPerDivine;
-  // categories without live data (uniques) reuse the rate of any live one
-  for (const entry of live.value.values()) {
-    if (entry.exaltedPerDivine) return entry.exaltedPerDivine;
-  }
+  if (ratesEntry.value?.exaltedPerDivine)
+    return ratesEntry.value.exaltedPerDivine;
   const cur = ninja.xchgRateCurrency.value;
   if (cur?.id === "exalted" && ninja.xchgRate.value)
     return ninja.xchgRate.value;
@@ -1220,8 +1226,19 @@ function formatPrice(divines: number) {
 }
 
 // share the rates with the converter and the history tab
-watch([chaosPerDivine, exaltedPerDivine], ([c, e]) => setRates(c, e), {
-  immediate: true,
+watch(
+  [chaosPerDivine, exaltedPerDivine, () => ratesEntry.value?.at],
+  ([c, e, at]) => setRates(c, e, at ?? ninja.marketUpdatedAt.value),
+  { immediate: true },
+);
+
+// Atziri Exchange: a price check can ask for fresh rates even while this page
+// is closed (one quiet request, only when the rates are old or missing)
+registerRatesRefresher(() => {
+  const cat =
+    categories.value.find((c) => c.type === selectedType.value && c.cx) ??
+    categories.value.find((c) => c.cx);
+  if (cat) fetchLive(cat.type, true, true);
 });
 
 type RowLine = MarketLine & { icon?: string };

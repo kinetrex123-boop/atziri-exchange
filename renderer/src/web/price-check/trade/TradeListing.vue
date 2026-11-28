@@ -142,6 +142,7 @@ import {
 import { useI18nNs } from "@/web/i18n";
 import UiPopover from "@/web/ui/Popover.vue";
 import { setTradeSummary } from "../atziri-price-summary";
+import { rates } from "@/web/overlay/atziri-money";
 import UiErrorBox from "@/web/ui/UiErrorBox.vue";
 import { createTradeRequest } from "./pathofexile-trade";
 import { getTradeEndpoint } from "./common";
@@ -201,7 +202,8 @@ export default defineComponent({
     const { error, searchResult, groupedResults, search } = useTradeApi();
 
     // Atziri Exchange: price summary for the top of the window
-    watch(groupedResults, (results) => {
+    // (rebuilt when fresh exchange rates arrive, so exalted prices count)
+    watch([groupedResults, rates], ([results]) => {
       setTradeSummary(searchResult.value?.total ?? results.length, results);
     });
 
