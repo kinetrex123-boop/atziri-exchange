@@ -486,14 +486,13 @@ export default defineComponent({
       saveFrameInset();
     }
 
-    // Atziri theme: "atziri" (and the upstream default tint) show the temple
-    // artwork in a large frame, only for the overlay itself (Shift + Space),
-    // not while the price check window (Ctrl + D) is open.
+    // Atziri theme: the Shift + Space page in a large frame, only for the
+    // overlay itself, not while the price check window (Ctrl + D) is open.
+    // It no longer depends on the background colour: "None" or a custom
+    // colour used to hide the whole page, and its settings button (audit H1).
     const atziriFrame = computed<boolean>(() => {
       if (!active.value) return false;
       if (pobCompareState.value) return false; // Ctrl + B panel shown instead
-      const bg = AppConfig().overlayBackground;
-      if (bg !== "atziri" && bg !== "rgba(129, 139, 149, 0.15)") return false;
       return !AppConfig().widgets.some(
         (w) => w.wmType === "price-check" && w.wmWants === "show",
       );
