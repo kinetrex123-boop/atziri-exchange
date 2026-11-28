@@ -52,7 +52,8 @@ export const RATE_LIMIT_RULES = {
   SEARCH: shallowReactive(new Set([new RateLimiter(1, 5)])),
   EXCHANGE: shallowReactive(new Set([new RateLimiter(1, 5)])),
   FETCH: shallowReactive(new Set([new RateLimiter(1, 5)])),
-  // WHISPER: shallowReactive(new Set([new RateLimiter(1, 5)])),
+  // Atziri Exchange: "Travel to Hideout" (one request per click)
+  WHISPER: shallowReactive(new Set([new RateLimiter(1, 5)])),
   // HISTORY: shallowReactive(new Set([new RateLimiter(1, 5)])),
 };
 

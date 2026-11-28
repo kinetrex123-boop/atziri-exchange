@@ -12,17 +12,37 @@
           type="button"
           :title="
             isHubWindow
-              ? tr('Remettre la page dans l\'overlay du jeu', 'Put the page back into the game overlay')
-              : tr('Ouvrir cette page dans sa propre fenêtre (2e écran…)', 'Open this page in its own window (second screen…)')
+              ? tr(
+                  'Remettre la page dans l\'overlay du jeu',
+                  'Put the page back into the game overlay',
+                )
+              : tr(
+                  'Ouvrir cette page dans sa propre fenêtre (2e écran…)',
+                  'Open this page in its own window (second screen…)',
+                )
           "
           @click="toggleDetach"
         >
-          <i :class="isHubWindow ? 'fas fa-compress-alt' : 'fas fa-external-link-square-alt'"></i>
-          <span>{{ isHubWindow ? tr("Rattacher", "Attach") : tr("Détacher", "Detach") }}</span>
+          <i
+            :class="
+              isHubWindow
+                ? 'fas fa-compress-alt'
+                : 'fas fa-external-link-square-alt'
+            "
+          ></i>
+          <span>{{
+            isHubWindow ? tr("Rattacher", "Attach") : tr("Détacher", "Detach")
+          }}</span>
         </button>
       </div>
       <div class="ar-brand">
-        <img class="ar-logo" :src="brandIconUrl(brand.icon)" alt="" width="64" height="64" />
+        <img
+          class="ar-logo"
+          :src="brandIconUrl(brand.icon)"
+          alt=""
+          width="64"
+          height="64"
+        />
         <h1 :key="activeTabLabel" class="ar-h1">{{ activeTabLabel }}</h1>
       </div>
       <ConverterBox class="ar-converter-pos" />
@@ -37,8 +57,14 @@
           role="tab"
           draggable="true"
           :class="{ 'ar-tab-drop': tabDrop === tb.id }"
-          :aria-selected="hubTab === tb.id || (tabGroup(tb.id) !== undefined && tabGroup(tb.id) === tabGroup(hubTab))"
-          @click="hubTab = tabGroup(tb.id) ? groupLastTab(tabGroup(tb.id)!) : tb.id"
+          :aria-selected="
+            hubTab === tb.id ||
+            (tabGroup(tb.id) !== undefined &&
+              tabGroup(tb.id) === tabGroup(hubTab))
+          "
+          @click="
+            hubTab = tabGroup(tb.id) ? groupLastTab(tabGroup(tb.id)!) : tb.id
+          "
           @dragstart="onTabDragStart(tb.id, $event)"
           @dragover.prevent="tabDrop = tb.id"
           @dragleave="tabDrop = tabDrop === tb.id ? null : tabDrop"
@@ -50,7 +76,8 @@
             v-if="tb.id === 'market' && alertCount"
             class="ar-badge"
             :title="tr('Alertes de prix', 'Price alerts')"
-          >{{ alertCount }}</span>
+            >{{ alertCount }}</span
+          >
         </button>
         <!-- Historique: icon only, far right -->
         <button
@@ -84,7 +111,12 @@
       <button
         type="button"
         class="ar-update-x"
-        :title="tr('Masquer jusqu’à la prochaine version', 'Hide until the next version')"
+        :title="
+          tr(
+            'Masquer jusqu’à la prochaine version',
+            'Hide until the next version',
+          )
+        "
         @click.prevent.stop="dismissUpdate"
       >
         ✕
@@ -94,7 +126,11 @@
     <!-- One web page per tab, loaded the first time the tab is opened, then
          kept alive (v-show) so each keeps its state -->
     <template v-for="tab in WEB_TABS" :key="tab.id">
-      <WebPane v-if="openedTabs.has(tab.id)" v-show="hubTab === tab.id" :tab="tab" />
+      <WebPane
+        v-if="openedTabs.has(tab.id)"
+        v-show="hubTab === tab.id"
+        :tab="tab"
+      />
     </template>
 
     <FarmPane v-show="hubTab === 'farm' && farmView === 'journal'" />
@@ -155,15 +191,30 @@
             · poe.ninja{{ isLive ? tr(" (direct)", " (live)") : "" }}
           </div>
           <div v-if="selectedType === FAV_TYPE" class="ar-fav-settings">
-            {{ tr("Alerte si le prix bouge de plus de", "Alert when the price moves more than") }}
+            {{
+              tr(
+                "Alerte si le prix bouge de plus de",
+                "Alert when the price moves more than",
+              )
+            }}
             <input
               v-model.number="alertThreshold"
               type="number"
               min="1"
               class="ar-search ar-threshold"
             />
-            {{ tr("% depuis l'ajout aux favoris.", "% since it was added to favorites.") }}
-            <span class="ar-muted">{{ tr("Clique sur une alerte pour la remettre à zéro.", "Click an alert to reset it.") }}</span>
+            {{
+              tr(
+                "% depuis l'ajout aux favoris.",
+                "% since it was added to favorites.",
+              )
+            }}
+            <span class="ar-muted">{{
+              tr(
+                "Clique sur une alerte pour la remettre à zéro.",
+                "Click an alert to reset it.",
+              )
+            }}</span>
           </div>
         </div>
 
@@ -176,14 +227,27 @@
         />
 
         <div v-if="!rows.length" class="ar-empty">
-          <template v-if="loading">{{ tr("Chargement des prix…", "Loading prices…") }}</template>
-          <template v-else-if="!categories.length"
-            >{{ tr("Aucun prix disponible pour cette ligue.", "No prices for this league.") }}</template
+          <template v-if="loading">{{
+            tr("Chargement des prix…", "Loading prices…")
+          }}</template>
+          <template v-else-if="!categories.length">{{
+            tr(
+              "Aucun prix disponible pour cette ligue.",
+              "No prices for this league.",
+            )
+          }}</template>
+          <template
+            v-else-if="selectedType === FAV_TYPE && !favorites.length"
+            >{{
+              tr(
+                "Clique sur l'étoile d'un objet pour l'ajouter à tes favoris.",
+                "Click the star of an item to add it to your favorites.",
+              )
+            }}</template
           >
-          <template v-else-if="selectedType === FAV_TYPE && !favorites.length"
-            >{{ tr("Clique sur l'étoile d'un objet pour l'ajouter à tes favoris.", "Click the star of an item to add it to your favorites.") }}</template
-          >
-          <template v-else>{{ tr("Aucun objet trouvé.", "No item found.") }}</template>
+          <template v-else>{{
+            tr("Aucun objet trouvé.", "No item found.")
+          }}</template>
         </div>
 
         <div v-else class="ar-table">
@@ -217,7 +281,11 @@
                   type="button"
                   class="ar-star"
                   :class="{ 'is-on': row.isFav }"
-                  :title="row.isFav ? tr('Retirer des favoris', 'Remove from favorites') : tr('Ajouter aux favoris', 'Add to favorites')"
+                  :title="
+                    row.isFav
+                      ? tr('Retirer des favoris', 'Remove from favorites')
+                      : tr('Ajouter aux favoris', 'Add to favorites')
+                  "
                   @click="toggleFav(row)"
                 >
                   <i :class="row.isFav ? 'fas fa-star' : 'far fa-star'"></i>
@@ -226,10 +294,19 @@
                 <span
                   v-if="hasTradeLink(row)"
                   class="truncate ar-unique-link"
-                  :title="row.ns === 'UNIQUE' ? tr('Voir cet unique sur le site de trade', 'Open this unique on the trade site') : tr('Voir cet objet sur le site de trade', 'Open this item on the trade site')"
+                  :title="
+                    row.ns === 'UNIQUE'
+                      ? tr(
+                          'Voir cet unique sur le site de trade',
+                          'Open this unique on the trade site',
+                        )
+                      : tr(
+                          'Voir cet objet sur le site de trade',
+                          'Open this item on the trade site',
+                        )
+                  "
                   @click="openUniqueOnTrade(row)"
-                  >{{ row.name }}
-                  <i class="fas fa-external-link-alt"></i
+                  >{{ row.name }} <i class="fas fa-external-link-alt"></i
                 ></span>
                 <span v-else class="truncate">{{ row.name }}</span>
                 <button
@@ -237,7 +314,12 @@
                   type="button"
                   class="ar-alert"
                   :class="row.sinceFav >= 0 ? 'ar-ok' : 'ar-bad'"
-                  :title="tr('Variation depuis l\'ajout aux favoris (clic : remettre à zéro)', 'Change since added to favorites (click: reset)')"
+                  :title="
+                    tr(
+                      'Variation depuis l\'ajout aux favoris (clic : remettre à zéro)',
+                      'Change since added to favorites (click: reset)',
+                    )
+                  "
                   @click="ackAlert(row)"
                 >
                   {{ row.sinceFav >= 0 ? "▲ +" : "▼ "
@@ -269,10 +351,7 @@
                   />
                 </svg>
               </div>
-              <div
-                class="ar-num"
-                :class="row.change >= 0 ? 'ar-ok' : 'ar-bad'"
-              >
+              <div class="ar-num" :class="row.change >= 0 ? 'ar-ok' : 'ar-bad'">
                 {{ row.change >= 0 ? "+" : "" }}{{ row.change.toFixed(2) }} %
               </div>
             </div>
@@ -297,7 +376,17 @@ import {
 import { AppConfig } from "@/web/Config";
 import { tr, isFrench, dateLocale } from "@/web/atziri-lang";
 import type { WidgetManager } from "./interfaces";
-import { hubTab, hubVisible, farmView, tabGroup, groupLastTab, WEB_TABS, openInHub, isDetachedHub, type HubTab } from "./atziri-hub";
+import {
+  hubTab,
+  hubVisible,
+  farmView,
+  tabGroup,
+  groupLastTab,
+  WEB_TABS,
+  openInHub,
+  isDetachedHub,
+  type HubTab,
+} from "./atziri-hub";
 import { poeWebApi } from "@/web/Config";
 import WebPane from "./WebPane.vue";
 import FarmPane from "./FarmPane.vue";
@@ -437,29 +526,75 @@ function autoCategoryLabel(type: string) {
 // Category icons, as shown in the poe.ninja economy sidebar
 const POECDN = "https://web.poecdn.com/gen/image/";
 const CATEGORY_ICONS: Record<string, string> = {
-  Currency: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQ3VycmVuY3lNb2RWYWx1ZXMiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/2986e220b3/CurrencyModValues.png",
-  Fragments: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQnJlYWNoL0JyZWFjaHN0b25lIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/d60587d724/Breachstone.png",
-  Abyss: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQWJ5c3NhbEV5ZVNvY2tldGFibGVzL1RlY3JvZHNHYXplIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/ef2a9355b4/TecrodsGaze.png",
-  UncutGems: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvR2Vtcy9VbmN1dFN1cHBvcnRHZW0iLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/d1ffe1c951/UncutSupportGem.png",
-  LineageSupportGems: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvR2Vtcy9OZXcvTmV3U3VwcG9ydC9MaW5lYWdlL1dpbGRzaGFyZHMiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/6d700adf17/Wildshards.png",
-  Essences: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRXNzZW5jZS9HcmVhdGVyQXR0cmlidXRlRXNzZW5jZSIsInNjYWxlIjoxLCJyZWFsbSI6InBvZTIifV0/8a8cb823af/GreaterAttributeEssence.png",
-  Ultimatum: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvU291bENvcmVzL0dyZWF0ZXJTb3VsQ29yZU1hbmEiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/1437190de2/GreaterSoulCoreMana.png",
-  Idols: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvVG9ybWVudGVkU3Bpcml0U29ja2V0YWJsZXMvQXptZXJpU29ja2V0YWJsZU1vbmtleVNwZWNpYWwiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/8ffc9986a0/AzmeriSocketableMonkeySpecial.png",
-  Runes: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUnVuZXMvTGlnaHRuaW5nUnVuZSIsInNjYWxlIjoxLCJyZWFsbSI6InBvZTIifV0/98319b3998/LightningRune.png",
-  Ritual: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvT21lbnMvVm9vZG9vT21lbnMzUmVkIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/9cfdcc9e1a/VoodooOmens3Red.png",
-  Expedition: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRXhwZWRpdGlvbi9CYXJ0ZXJSZWZyZXNoQ3VycmVuY3kiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/8a4fe1f468/BarterRefreshCurrency.png",
-  Delirium: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRGlzdGlsbGVkRW1vdGlvbnMvRGlzdGlsbGVkUGFyYW5vaWEiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/279e807e8f/DistilledParanoia.png",
-  Breach: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQnJlYWNoL0JyZWFjaENhdGFseXN0TWFuYSIsInNjYWxlIjoxLCJyZWFsbSI6InBvZTIifV0/61d3a7a832/BreachCatalystMana.png",
-  Verisium: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRXhwZWRpdGlvbjIvUmVmaW5lZFZlcmlzaXVtIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/35616acb9f/RefinedVerisium.png",
-  UniqueWeapons: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvV2VhcG9ucy9PbmVIYW5kV2VhcG9ucy9PbmVIYW5kTWFjZXMvVW5pcXVlcy9Nam9sbmVyIiwidyI6MiwiaCI6Mywic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/9216de28a2/Mjolner.png",
-  UniqueArmours: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9HbG92ZXMvVW5pcXVlcy9NYWxpZ2Fyb3NWaXJ0dW9zaXR5IiwidyI6MiwiaCI6Miwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/08f6808733/MaligarosVirtuosity.png",
-  UniqueAccessories: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQmVsdHMvVW5pcXVlcy9IZWFkaHVudGVyIiwidyI6MiwiaCI6MSwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/24accb4eec/Headhunter.png",
-  UniqueFlasks: POECDN + "WzksMTQseyJmIjoiMkRJdGVtcy9GbGFza3MvVW5pcXVlcy9MYXZpYW5nYXNTcGlyaXQiLCJ3IjoxLCJoIjoyLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIiwibGV2ZWwiOjF9XQ/ef79cd6b0d/LaviangasSpirit.png",
-  UniqueCharms: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ2hhcm1zL1VuaXF1ZXMvUnVieVVuaXF1ZUNoYXJtIiwidyI6MSwiaCI6MSwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/f88d02b00c/RubyUniqueCharm.png",
-  UniqueJewels: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvSmV3ZWxzL1VuaXF1ZXMvR3JhbmRTcGVjdHJ1bV9SdWJ5IiwidyI6MSwiaCI6MSwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/8d964b3e88/GrandSpectrum_Ruby.png",
-  UniqueSanctumRelics: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvUmVsaWNzL1JlbGljVW5pcXVlMXgzIiwidyI6MSwiaCI6Mywic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/9a0c871b8b/RelicUnique1x3.png",
-  UniqueTablets: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUHJlY3Vyc29yVGFibGV0cy9QcmVjdXJzb3JUYWJsZXRBYnlzc1VuaXF1ZTEiLCJ3IjoxLCJoIjoxLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/a5c2d8a638/PrecursorTabletAbyssUnique1.png",
-  PrecursorTablets: POECDN + "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUHJlY3Vyc29yVGFibGV0cy9QcmVjdXJzb3JUYWJsZXRBYnlzc1VuaXF1ZTEiLCJ3IjoxLCJoIjoxLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/a5c2d8a638/PrecursorTabletAbyssUnique1.png",
+  Currency:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQ3VycmVuY3lNb2RWYWx1ZXMiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/2986e220b3/CurrencyModValues.png",
+  Fragments:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQnJlYWNoL0JyZWFjaHN0b25lIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/d60587d724/Breachstone.png",
+  Abyss:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQWJ5c3NhbEV5ZVNvY2tldGFibGVzL1RlY3JvZHNHYXplIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/ef2a9355b4/TecrodsGaze.png",
+  UncutGems:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvR2Vtcy9VbmN1dFN1cHBvcnRHZW0iLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/d1ffe1c951/UncutSupportGem.png",
+  LineageSupportGems:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvR2Vtcy9OZXcvTmV3U3VwcG9ydC9MaW5lYWdlL1dpbGRzaGFyZHMiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/6d700adf17/Wildshards.png",
+  Essences:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRXNzZW5jZS9HcmVhdGVyQXR0cmlidXRlRXNzZW5jZSIsInNjYWxlIjoxLCJyZWFsbSI6InBvZTIifV0/8a8cb823af/GreaterAttributeEssence.png",
+  Ultimatum:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvU291bENvcmVzL0dyZWF0ZXJTb3VsQ29yZU1hbmEiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/1437190de2/GreaterSoulCoreMana.png",
+  Idols:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvVG9ybWVudGVkU3Bpcml0U29ja2V0YWJsZXMvQXptZXJpU29ja2V0YWJsZU1vbmtleVNwZWNpYWwiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/8ffc9986a0/AzmeriSocketableMonkeySpecial.png",
+  Runes:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUnVuZXMvTGlnaHRuaW5nUnVuZSIsInNjYWxlIjoxLCJyZWFsbSI6InBvZTIifV0/98319b3998/LightningRune.png",
+  Ritual:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvT21lbnMvVm9vZG9vT21lbnMzUmVkIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/9cfdcc9e1a/VoodooOmens3Red.png",
+  Expedition:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRXhwZWRpdGlvbi9CYXJ0ZXJSZWZyZXNoQ3VycmVuY3kiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/8a4fe1f468/BarterRefreshCurrency.png",
+  Delirium:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRGlzdGlsbGVkRW1vdGlvbnMvRGlzdGlsbGVkUGFyYW5vaWEiLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/279e807e8f/DistilledParanoia.png",
+  Breach:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQnJlYWNoL0JyZWFjaENhdGFseXN0TWFuYSIsInNjYWxlIjoxLCJyZWFsbSI6InBvZTIifV0/61d3a7a832/BreachCatalystMana.png",
+  Verisium:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvRXhwZWRpdGlvbjIvUmVmaW5lZFZlcmlzaXVtIiwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/35616acb9f/RefinedVerisium.png",
+  UniqueWeapons:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvV2VhcG9ucy9PbmVIYW5kV2VhcG9ucy9PbmVIYW5kTWFjZXMvVW5pcXVlcy9Nam9sbmVyIiwidyI6MiwiaCI6Mywic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/9216de28a2/Mjolner.png",
+  UniqueArmours:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9HbG92ZXMvVW5pcXVlcy9NYWxpZ2Fyb3NWaXJ0dW9zaXR5IiwidyI6MiwiaCI6Miwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/08f6808733/MaligarosVirtuosity.png",
+  UniqueAccessories:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQmVsdHMvVW5pcXVlcy9IZWFkaHVudGVyIiwidyI6MiwiaCI6MSwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/24accb4eec/Headhunter.png",
+  UniqueFlasks:
+    POECDN +
+    "WzksMTQseyJmIjoiMkRJdGVtcy9GbGFza3MvVW5pcXVlcy9MYXZpYW5nYXNTcGlyaXQiLCJ3IjoxLCJoIjoyLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIiwibGV2ZWwiOjF9XQ/ef79cd6b0d/LaviangasSpirit.png",
+  UniqueCharms:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ2hhcm1zL1VuaXF1ZXMvUnVieVVuaXF1ZUNoYXJtIiwidyI6MSwiaCI6MSwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/f88d02b00c/RubyUniqueCharm.png",
+  UniqueJewels:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvSmV3ZWxzL1VuaXF1ZXMvR3JhbmRTcGVjdHJ1bV9SdWJ5IiwidyI6MSwiaCI6MSwic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/8d964b3e88/GrandSpectrum_Ruby.png",
+  UniqueSanctumRelics:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvUmVsaWNzL1JlbGljVW5pcXVlMXgzIiwidyI6MSwiaCI6Mywic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/9a0c871b8b/RelicUnique1x3.png",
+  UniqueTablets:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUHJlY3Vyc29yVGFibGV0cy9QcmVjdXJzb3JUYWJsZXRBYnlzc1VuaXF1ZTEiLCJ3IjoxLCJoIjoxLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/a5c2d8a638/PrecursorTabletAbyssUnique1.png",
+  PrecursorTablets:
+    POECDN +
+    "WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUHJlY3Vyc29yVGFibGV0cy9QcmVjdXJzb3JUYWJsZXRBYnlzc1VuaXF1ZTEiLCJ3IjoxLCJoIjoxLCJzY2FsZSI6MSwicmVhbG0iOiJwb2UyIn1d/a5c2d8a638/PrecursorTabletAbyssUnique1.png",
 };
 
 const CURRENCY_ICONS: Record<string, string> = {
@@ -508,6 +643,9 @@ watch(
   },
 );
 
+// Atziri Exchange: Abyss tab hidden until it is finished (true = shown)
+const SHOW_ABYSS_TAB = false;
+
 // ---- tabs, in the order chosen by the player ----
 type HubTabEntry = { id: HubTab; icon: string; label: string };
 const allTabs = computed<HubTabEntry[]>(() => {
@@ -523,9 +661,27 @@ const allTabs = computed<HubTabEntry[]>(() => {
     web("regexeng"),
     { id: "farm", icon: "fa-map", label: "Farm" },
     web("ninja"),
-    { id: "well", icon: "fa-skull", label: tr("Abysse", "Abyss") },
+    ...(SHOW_ABYSS_TAB
+      ? [
+          {
+            id: "well",
+            icon: "fa-skull",
+            label: tr("Abysse", "Abyss"),
+          } as HubTabEntry,
+        ]
+      : []),
   ];
 });
+// Atziri Exchange: the Abyss tab (Well of Souls / Rune Rewards) is not finished yet.
+// Set SHOW_ABYSS_TAB to true to bring it back; its code is untouched.
+watch(
+  hubTab,
+  (tab) => {
+    if (!SHOW_ABYSS_TAB && (tab === "well" || tab === "runes"))
+      hubTab.value = "market";
+  },
+  { immediate: true },
+);
 const TAB_ORDER_KEY = "atziri-tab-order";
 function loadTabOrder(): string[] {
   try {
@@ -557,7 +713,9 @@ function onTabDrop(target: string) {
   const from = tabDragged;
   tabDragged = null;
   if (!from || from === target) return;
-  const ids = orderedTabs.value.map((t) => t.id as string).filter((id) => id !== from);
+  const ids = orderedTabs.value
+    .map((t) => t.id as string)
+    .filter((id) => id !== from);
   ids.splice(ids.indexOf(target), 0, from);
   tabOrder.value = ids;
   try {
@@ -573,7 +731,8 @@ const activeTabLabel = computed(() => {
   if (hubTab.value === "farm") return "Farm";
   if (hubTab.value === "stats") return "Stats";
   if (hubTab.value === "crafttrack") return tr("Suivi craft", "Craft tracking");
-  if (hubTab.value === "methods") return tr("Méthodes de craft", "Craft methods");
+  if (hubTab.value === "methods")
+    return tr("Méthodes de craft", "Craft methods");
   if (hubTab.value === "history") return tr("Historique", "History");
   if (hubTab.value === "well") return "Well of Souls";
   if (hubTab.value === "runes") return "Rune Rewards";
@@ -660,54 +819,56 @@ async function fetchLiveType(
   league: string,
   type: string,
 ): Promise<LiveCategory | "failed"> {
-    const query = `league=${encodeURIComponent(league).replace(/%20/g, "+")}&type=${encodeURIComponent(type)}`;
-    const res = await Host.proxy(
-      `poe.ninja/poe2/api/economy/exchange/current/overview?${query}`,
-    );
-    if (!res.ok) return "failed";
-    const data = (await res.json()) as {
-      core?: { rates?: Record<string, number> };
-      lines?: Array<{
-        id: string;
-        primaryValue: number;
-        volumePrimaryValue?: number;
-        sparkline?: { totalChange: number; data: Array<number | null> };
-      }>;
-      items?: Array<{
-        id: string;
-        name: string;
-        image?: string;
-        detailsId: string;
-      }>;
-    };
-    const items = new Map((data.items ?? []).map((i) => [i.id, i]));
-    const lines = (data.lines ?? []).flatMap((line) => {
-      const item = items.get(line.id);
-      if (!item) return [];
-      return [
-        {
-          name: item.name,
-          primaryValue: line.primaryValue,
-          volumePrimaryValue: line.volumePrimaryValue,
-          detailsId: item.detailsId,
-          sparkline: line.sparkline ?? { totalChange: 0, data: [] },
-          icon: item.image ? `https://web.poecdn.com${item.image}` : undefined,
-        },
-      ];
-    });
-    return {
-      lines,
-      chaosPerDivine: data.core?.rates?.chaos,
-      exaltedPerDivine: data.core?.rates?.exalted,
-      at: Date.now(),
-    };
+  const query = `league=${encodeURIComponent(league).replace(/%20/g, "+")}&type=${encodeURIComponent(type)}`;
+  const res = await Host.proxy(
+    `poe.ninja/poe2/api/economy/exchange/current/overview?${query}`,
+  );
+  if (!res.ok) return "failed";
+  const data = (await res.json()) as {
+    core?: { rates?: Record<string, number> };
+    lines?: Array<{
+      id: string;
+      primaryValue: number;
+      volumePrimaryValue?: number;
+      sparkline?: { totalChange: number; data: Array<number | null> };
+    }>;
+    items?: Array<{
+      id: string;
+      name: string;
+      image?: string;
+      detailsId: string;
+    }>;
+  };
+  const items = new Map((data.items ?? []).map((i) => [i.id, i]));
+  const lines = (data.lines ?? []).flatMap((line) => {
+    const item = items.get(line.id);
+    if (!item) return [];
+    return [
+      {
+        name: item.name,
+        primaryValue: line.primaryValue,
+        volumePrimaryValue: line.volumePrimaryValue,
+        detailsId: item.detailsId,
+        sparkline: line.sparkline ?? { totalChange: 0, data: [] },
+        icon: item.image ? `https://web.poecdn.com${item.image}` : undefined,
+      },
+    ];
+  });
+  return {
+    lines,
+    chaosPerDivine: data.core?.rates?.chaos,
+    exaltedPerDivine: data.core?.rates?.exalted,
+    at: Date.now(),
+  };
 }
 
 // --- New Atziri Exchange version (checked by the main process) ---
 const atziriUpdate = shallowRef<{ build: number; url: string } | null>(null);
 // "✕" on the notice: hidden until an even newer version is published
 const UPDATE_DISMISS_KEY = "atziri-update-dismissed";
-const updateDismissed = shallowRef(Number(localStorage.getItem(UPDATE_DISMISS_KEY) ?? 0) || 0);
+const updateDismissed = shallowRef(
+  Number(localStorage.getItem(UPDATE_DISMISS_KEY) ?? 0) || 0,
+);
 function dismissUpdate() {
   if (!atziriUpdate.value) return;
   updateDismissed.value = atziriUpdate.value.build;
@@ -739,9 +900,14 @@ watch(
 
 // ---- sliding underline under the open tab ----
 const tabsNav = shallowRef<HTMLElement | null>(null);
-const tabInd = shallowRef<Record<string, string>>({ width: "0px", opacity: "0" });
+const tabInd = shallowRef<Record<string, string>>({
+  width: "0px",
+  opacity: "0",
+});
 function placeTabInd() {
-  const sel = tabsNav.value?.querySelector<HTMLElement>('button[aria-selected="true"]');
+  const sel = tabsNav.value?.querySelector<HTMLElement>(
+    'button[aria-selected="true"]',
+  );
   if (!sel || !sel.offsetWidth) return;
   tabInd.value = {
     width: `${sel.offsetWidth}px`,
@@ -750,7 +916,11 @@ function placeTabInd() {
   };
 }
 watch(
-  [hubTab, () => orderedTabs.value.map((t) => t.id).join(), () => props.visible],
+  [
+    hubTab,
+    () => orderedTabs.value.map((t) => t.id).join(),
+    () => props.visible,
+  ],
   () => nextTick(placeTabInd),
 );
 let tabsResize: ResizeObserver | undefined;
@@ -799,7 +969,11 @@ watch(
     fetchLive(selectedType.value);
     // new categories: load them quietly once, to borrow an item icon
     for (const cat of cats) {
-      if (cat.cx && !CATEGORY_ICONS[cat.type] && cat.type !== selectedType.value) {
+      if (
+        cat.cx &&
+        !CATEGORY_ICONS[cat.type] &&
+        cat.type !== selectedType.value
+      ) {
         fetchLive(cat.type, false, true);
       }
     }
@@ -864,7 +1038,11 @@ function onDrop(target: string) {
   const order = orderedCategories.value.map((c) => c.type);
   const from = order.indexOf(dragged);
   order.splice(from, 1);
-  order.splice(order.indexOf(target) + (from <= order.indexOf(target) ? 1 : 0), 0, dragged);
+  order.splice(
+    order.indexOf(target) + (from <= order.indexOf(target) ? 1 : 0),
+    0,
+    dragged,
+  );
   categoryOrder.value = order;
   try {
     localStorage.setItem(ORDER_KEY, JSON.stringify(order));
@@ -904,7 +1082,8 @@ function openUniqueOnTrade(row: Row) {
     status: { option: "securable" },
     name: useEn ? row.refName : (unique?.name ?? row.refName),
   };
-  if (row.variant) query.type = useEn ? row.variant : (base?.name ?? row.variant);
+  if (row.variant)
+    query.type = useEn ? row.variant : (base?.name ?? row.variant);
   // "Exalted or Divine" price filter, like the Ctrl + D searches
   query.filters = {
     trade_filters: { filters: { price: { option: "exalted_divine" } } },
@@ -1004,13 +1183,15 @@ const chaosPerDivine = computed<number | undefined>(() => {
 
 // Exalted per Divine, from live data or the background price snapshot
 const exaltedPerDivine = computed<number | undefined>(() => {
-  if (liveEntry.value?.exaltedPerDivine) return liveEntry.value.exaltedPerDivine;
+  if (liveEntry.value?.exaltedPerDivine)
+    return liveEntry.value.exaltedPerDivine;
   // categories without live data (uniques) reuse the rate of any live one
   for (const entry of live.value.values()) {
     if (entry.exaltedPerDivine) return entry.exaltedPerDivine;
   }
   const cur = ninja.xchgRateCurrency.value;
-  if (cur?.id === "exalted" && ninja.xchgRate.value) return ninja.xchgRate.value;
+  if (cur?.id === "exalted" && ninja.xchgRate.value)
+    return ninja.xchgRate.value;
   return undefined;
 });
 
@@ -1047,7 +1228,9 @@ type RowLine = MarketLine & { icon?: string };
 
 /** Lines of a category: live poe.ninja data when loaded, else the snapshot */
 function linesFor(type: string): readonly RowLine[] {
-  const liveLines = live.value.get(`${leagues.selectedId.value}|${type}`)?.lines;
+  const liveLines = live.value.get(
+    `${leagues.selectedId.value}|${type}`,
+  )?.lines;
   if (liveLines?.length) return liveLines;
   return (categories.value.find((c) => c.type === type)?.lines ??
     []) as readonly RowLine[];
@@ -1170,8 +1353,10 @@ const rows = computed(() => {
   const dir = sortDesc.value ? -1 : 1;
   const key = sortBy.value;
   return filtered.sort((a, b) => {
-    const av = key === "price" ? a.value : key === "volume" ? a.volume : a.change;
-    const bv = key === "price" ? b.value : key === "volume" ? b.volume : b.change;
+    const av =
+      key === "price" ? a.value : key === "volume" ? a.volume : a.change;
+    const bv =
+      key === "price" ? b.value : key === "volume" ? b.volume : b.change;
     return (av - bv) * dir;
   });
 });
@@ -1913,13 +2098,27 @@ const rows = computed(() => {
 .ar-list > .ar-row:nth-child(-n + 20) {
   animation: atz-rise 0.45s var(--ease) both;
 }
-.ar-list > .ar-row:nth-child(2) { animation-delay: 30ms; }
-.ar-list > .ar-row:nth-child(3) { animation-delay: 60ms; }
-.ar-list > .ar-row:nth-child(4) { animation-delay: 90ms; }
-.ar-list > .ar-row:nth-child(5) { animation-delay: 120ms; }
-.ar-list > .ar-row:nth-child(6) { animation-delay: 150ms; }
-.ar-list > .ar-row:nth-child(7) { animation-delay: 180ms; }
-.ar-list > .ar-row:nth-child(n + 8) { animation-delay: 210ms; }
+.ar-list > .ar-row:nth-child(2) {
+  animation-delay: 30ms;
+}
+.ar-list > .ar-row:nth-child(3) {
+  animation-delay: 60ms;
+}
+.ar-list > .ar-row:nth-child(4) {
+  animation-delay: 90ms;
+}
+.ar-list > .ar-row:nth-child(5) {
+  animation-delay: 120ms;
+}
+.ar-list > .ar-row:nth-child(6) {
+  animation-delay: 150ms;
+}
+.ar-list > .ar-row:nth-child(7) {
+  animation-delay: 180ms;
+}
+.ar-list > .ar-row:nth-child(n + 8) {
+  animation-delay: 210ms;
+}
 
 .ar-row--head {
   border: none;
@@ -2055,10 +2254,18 @@ const rows = computed(() => {
 .ar-hub > .ar-body:not(.ar-browser) > * {
   animation: atz-rise 0.5s var(--ease) both;
 }
-.ar-hub > .ar-body:not(.ar-browser) > :nth-child(2) { animation-delay: 60ms; }
-.ar-hub > .ar-body:not(.ar-browser) > :nth-child(3) { animation-delay: 120ms; }
-.ar-hub > .ar-body:not(.ar-browser) > :nth-child(4) { animation-delay: 180ms; }
-.ar-hub > .ar-body:not(.ar-browser) > :nth-child(n + 5) { animation-delay: 240ms; }
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.ar-hub > .ar-body:not(.ar-browser) > :nth-child(n + 5) {
+  animation-delay: 240ms;
+}
 
 .ar-hub fieldset:hover,
 .ar-main:hover {

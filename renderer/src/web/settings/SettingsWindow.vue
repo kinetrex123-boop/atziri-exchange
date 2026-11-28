@@ -336,9 +336,23 @@ function menuByType(type?: string) {
         [SettingsPricecheck, SettingsMaps, SettingsItemcheck],
         [SettingsLeveling],
         [SettingsHelp, SettingsDebug, SettingsAbout],
-      ];
+      ]
+        .map((group) => group.filter((c) => !HIDDEN_SETTINGS_PAGES.includes(c)))
+        .filter((group) => group.length);
   }
 }
+
+// Atziri Exchange: settings pages hidden for now (the features behind them
+// keep working with their current settings). Remove a page from this list
+// to show it again.
+const HIDDEN_SETTINGS_PAGES: Component[] = [
+  SettingsMaps, // Vérification de carte
+  SettingsItemcheck, // Infos de l'objet
+  SettingsLeveling, // Montée en niveau
+  SettingsHelp, // Aide
+  SettingsDebug, // Débogage
+  SettingsAbout, // À propos
+];
 
 function flatJoin<T, J>(arr: T[][], joinEl: () => J) {
   const out: Array<T | J> = [];

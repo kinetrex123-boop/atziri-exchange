@@ -1,6 +1,10 @@
 <template>
   <div :class="[$style.btn, { [$style.active]: !filter.disabled }]">
-    <button @click="filter.disabled = !filter.disabled" class="pl-2">
+    <button
+      @click="filter.disabled = !filter.disabled"
+      class="pl-2 inline-flex items-center"
+    >
+      <img v-if="icon" :src="icon" :class="$style.icon" alt="" />
       {{ name }}
     </button>
     <input
@@ -45,6 +49,11 @@ export default defineComponent({
     name: {
       type: String,
       required: true,
+    },
+    // Atziri Exchange: small icon in front of the label
+    icon: {
+      type: String,
+      default: undefined,
     },
   },
   setup(props) {
@@ -127,13 +136,24 @@ export default defineComponent({
 <style lang="postcss" module>
 .btn {
   @apply bg-gray-900 rounded;
+  display: inline-flex;
+  align-items: center;
   @apply border border-transparent;
   @apply pr-1;
   line-height: 1.25rem;
+  height: 1.5rem;
+  white-space: nowrap;
 
   &.active {
     @apply border-gray-500;
   }
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  margin: -2px 0.25rem -2px 0;
+  filter: brightness(1.45);
 }
 
 .input {

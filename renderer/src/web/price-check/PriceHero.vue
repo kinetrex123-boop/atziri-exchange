@@ -1,32 +1,43 @@
 <template>
   <!-- Atziri Exchange: big price banner at the top of the price check -->
   <div v-if="view" :key="view.main + view.mainUnit" class="atz-hero">
-    <div class="atz-hero-cap">
-      <span>{{ view.caption }}</span>
-      <span
-        v-if="view.confidence"
-        class="atz-hero-conf"
-        :class="`atz-conf-${view.confidence.level}`"
-        :title="view.confidence.hint"
-        ><i class="atz-hero-dot"></i>{{ view.confidence.label }}</span
-      >
-    </div>
-    <div class="atz-hero-main">
-      <span class="atz-hero-big">{{ view.main }}</span>
-      <img :src="view.mainIcon" class="atz-hero-cur" />
-      <span class="atz-hero-unit">{{ view.mainUnit }}</span>
-    </div>
-    <!-- small cells under the price: each one on a single line, never overflows -->
-    <div v-if="view.cells?.length" class="atz-hero-cells">
-      <div v-for="c in view.cells" :key="c.label" class="atz-hero-cell" :title="`${c.label} : ${c.text} ${c.unit}`">
-        <span class="atz-hero-cell-l">{{ c.label }}</span>
-        <span class="atz-hero-cell-v">
-          <b>{{ c.text }}</b>
-          <img v-if="c.icon" :src="c.icon" class="atz-hero-cur-sm" />
-        </span>
+    <!-- Atziri Exchange: price on the left; confidence and range stacked on the right -->
+    <div class="atz-hero-top">
+      <div class="atz-hero-left">
+        <div class="atz-hero-cap">
+          <span>{{ view.caption }}</span>
+        </div>
+        <div class="atz-hero-main">
+          <span class="atz-hero-big">{{ view.main }}</span>
+          <img :src="view.mainIcon" class="atz-hero-cur" />
+          <span class="atz-hero-unit">{{ view.mainUnit }}</span>
+        </div>
+      </div>
+      <div v-if="view.confidence || view.cells?.length" class="atz-hero-right">
+        <span
+          v-if="view.confidence"
+          class="atz-hero-conf"
+          :class="`atz-conf-${view.confidence.level}`"
+          :title="view.confidence.hint"
+          ><i class="atz-hero-dot"></i>{{ view.confidence.label }}</span
+        >
+        <div
+          v-for="c in view.cells"
+          :key="c.label"
+          class="atz-hero-cell"
+          :title="`${c.label} : ${c.text} ${c.unit}`"
+        >
+          <span class="atz-hero-cell-l">{{ c.label }}</span>
+          <span class="atz-hero-cell-v">
+            <b>{{ c.text }}</b>
+            <img v-if="c.icon" :src="c.icon" class="atz-hero-cur-sm" />
+          </span>
+        </div>
       </div>
     </div>
-    <div v-if="view.sub" class="atz-hero-sub" :title="view.sub">{{ view.sub }}</div>
+    <div v-if="view.sub" class="atz-hero-sub" :title="view.sub">
+      {{ view.sub }}
+    </div>
   </div>
 </template>
 
@@ -46,25 +57,54 @@ const ninja = usePoeninja();
 function inBestUnit(div: number) {
   const { chaos, exalted } = rates.value;
   if (div >= 1 || !chaos) {
-    return { text: displayRounding(div, false, true), icon: CURRENCY_ICONS.div, unit: "Divines" };
+    return {
+      text: displayRounding(div, false, true),
+      icon: CURRENCY_ICONS.div,
+      unit: "Divines",
+    };
   }
   if (div * chaos >= 1 || !exalted) {
-    return { text: displayRounding(div * chaos, false, true), icon: CURRENCY_ICONS.chaos, unit: "Chaos" };
+    return {
+      text: displayRounding(div * chaos, false, true),
+      icon: CURRENCY_ICONS.chaos,
+      unit: "Chaos",
+    };
   }
-  return { text: displayRounding(div * exalted, true, true), icon: CURRENCY_ICONS.exalted, unit: tr("Exaltés", "Exalted") };
+  return {
+    text: displayRounding(div * exalted, true, true),
+    icon: CURRENCY_ICONS.exalted,
+    unit: tr("Exaltés", "Exalted"),
+  };
 }
 
 function confidenceView(level: "low" | "medium" | "high") {
   switch (level) {
     case "low":
-      return { level, label: tr("Fiabilité faible", "Low confidence"), hint: tr("Moins de 5 annonces ou prix très dispersés", "Under 5 listings or prices all over the place") };
+      return {
+        level,
+        label: tr("Fiabilité faible", "Low confidence"),
+        hint: tr(
+          "Moins de 5 annonces ou prix très dispersés",
+          "Under 5 listings or prices all over the place",
+        ),
+      };
     case "medium":
-      return { level, label: tr("Fiabilité moyenne", "Medium confidence"), hint: tr("Entre 5 et 20 annonces", "Between 5 and 20 listings") };
+      return {
+        level,
+        label: tr("Fiabilité moyenne", "Medium confidence"),
+        hint: tr("Entre 5 et 20 annonces", "Between 5 and 20 listings"),
+      };
     default:
-      return { level, label: tr("Fiabilité bonne", "Good confidence"), hint: tr("Plus de 20 annonces aux prix cohérents", "Over 20 listings with consistent prices") };
+      return {
+        level,
+        label: tr("Fiabilité bonne", "Good confidence"),
+        hint: tr(
+          "Plus de 20 annonces aux prix cohérents",
+          "Over 20 listings with consistent prices",
+        ),
+      };
   }
 }
-
 
 const view = computed(() => {
   // 1) trade search results: range of the cheapest listings
@@ -78,11 +118,21 @@ const view = computed(() => {
     const pl = (n: number) => (n > 1 ? "s" : "");
     const left: string[] = [];
     if (s.ignored > 0)
-      left.push(tr(`${s.ignored} trop basse${pl(s.ignored)}`, `${s.ignored} too cheap`));
+      left.push(
+        tr(`${s.ignored} trop basse${pl(s.ignored)}`, `${s.ignored} too cheap`),
+      );
     if (s.ignoredHigh > 0)
-      left.push(tr(`${s.ignoredHigh} trop chère${pl(s.ignoredHigh)}`, `${s.ignoredHigh} too expensive`));
+      left.push(
+        tr(
+          `${s.ignoredHigh} trop chère${pl(s.ignoredHigh)}`,
+          `${s.ignoredHigh} too expensive`,
+        ),
+      );
     const ignoredText = left.length
-      ? tr(` · ignorées : ${left.join(", ")}`, ` · left out: ${left.join(", ")}`)
+      ? tr(
+          ` · ignorées : ${left.join(", ")}`,
+          ` · left out: ${left.join(", ")}`,
+        )
       : "";
     return {
       caption: tr(
@@ -96,7 +146,10 @@ const view = computed(() => {
       cells: [
         {
           label: tr("Fourchette", "Range"),
-          text: low.unit === high.unit && low.text !== high.text ? `${low.text} – ${high.text}` : low.text,
+          text:
+            low.unit === high.unit && low.text !== high.text
+              ? `${low.text} – ${high.text}`
+              : low.text,
           icon: low.icon,
           unit: low.unit,
         },
@@ -164,6 +217,26 @@ const view = computed(() => {
   }
 }
 
+.atz-hero-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.atz-hero-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.atz-hero-right {
+  flex: none;
+  max-width: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .atz-hero-cap {
   display: flex;
   justify-content: space-between;
@@ -183,6 +256,8 @@ const view = computed(() => {
 
 .atz-hero-conf {
   flex: none;
+  font-size: 0.68rem;
+  text-transform: uppercase;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -244,13 +319,7 @@ const view = computed(() => {
   color: theme("colors.gray.400");
 }
 
-/* Fourchette / Vente rapide / Le moins cher: one line each, never overflow */
-.atz-hero-cells {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-}
-
+/* Fourchette: under the confidence, on the right */
 .atz-hero-cell {
   min-width: 0;
   max-width: 100%;

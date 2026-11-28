@@ -48,6 +48,8 @@ function toggle() {
   @apply border border-transparent;
   @apply pl-1 pr-2;
   line-height: 1.25rem;
+  height: 1.5rem;
+  white-space: nowrap;
   display: flex;
   align-items: center;
 

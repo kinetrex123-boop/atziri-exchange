@@ -472,6 +472,8 @@ interface FetchResult {
     };
     account: Account;
     in_demand?: boolean;
+    // instant buyout listings, only when the trade site session is logged in
+    hideout_token?: string;
   };
   gone?: boolean;
 }
@@ -562,6 +564,7 @@ export interface PricingResult {
   displayItem?: DisplayItem;
   inDemand?: boolean;
   gone?: boolean;
+  hideoutToken?: string;
 }
 
 export function createTradeRequest(
@@ -1298,6 +1301,41 @@ export async function requestTradeResultList(
   return data;
 }
 
+/**
+ * Atziri Exchange: "Travel to Hideout" of an instant buyout listing, like the
+ * button of the official trade site. One request per click of the player.
+ * Uses the trade site session (cookies) of the app.
+ */
+export async function travelToHideout(
+  token: string,
+): Promise<"ok" | "login" | "gone" | "error"> {
+  await RateLimiter.waitMulti(RATE_LIMIT_RULES.WHISPER);
+  const response = await Host.proxy(
+    `${getTradeEndpoint()}/api/trade2/whisper`,
+    {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({ token }),
+    },
+  );
+  adjustRateLimits(RATE_LIMIT_RULES.WHISPER, response.headers);
+  if (response.status === 401 || response.status === 403) return "login";
+  let data: TradeResponse<unknown> | undefined;
+  try {
+    data = (await response.json()) as TradeResponse<unknown>;
+  } catch {
+    // empty body
+  }
+  if (response.ok && !data?.error) return "ok";
+  if (response.status === 404 || response.status === 410) return "gone";
+  console.error("[travelToHideout]", response.status, data?.error?.message);
+  return "error";
+}
+
 export async function requestResults(
   queryId: string,
   resultIds: string[],
@@ -1410,6 +1448,7 @@ export async function requestResults(
         : "offline",
       displayItem,
       inDemand: result.listing.in_demand,
+      hideoutToken: result.listing.hideout_token,
       gone: result.gone,
     };
   });

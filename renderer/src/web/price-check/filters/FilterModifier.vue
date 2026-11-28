@@ -1,7 +1,11 @@
 <template>
   <!-- Atziri Exchange: a click anywhere on the line toggles it -->
   <div
-    :class="[$style['filter'], isDisabled ? $style['isOff'] : $style['isOn']]"
+    :class="[
+      $style['filter'],
+      isDisabled ? $style['isOff'] : $style['isOn'],
+      { [$style.compact]: compact },
+    ]"
     @click="toggleFromRow"
   >
     <div v-if="showSourceInfo" :class="$style['mods']">
@@ -27,12 +31,16 @@
             class="search-text flex-1 mr-1 relative flex min-w-0"
             style="line-height: 1rem"
           >
-            <span class="truncate"
+            <!-- Atziri Exchange: property line = bold name, value in the box -->
+            <span v-if="compact" :class="$style.compactName">{{
+              compactLabel
+            }}</span>
+            <span v-else :class="$style.clamp2"
               ><item-modifier-text
                 :text="showShortText ? shortText : text"
                 :roll="roll?.value"
             /></span>
-            <span class="search-text-full whitespace-pre-wrap"
+            <span v-if="!compact" class="search-text-full whitespace-pre-wrap"
               ><item-modifier-text :text="text" :roll="roll?.value"
             /></span>
           </div>
@@ -56,8 +64,9 @@
             {{ t("item.prop_quality", [calcQuality]) }}
           </div>
           <div class="flex gap-x-px">
+            <span v-if="exact && showInputs" :class="$style.exactEq">=</span>
             <input
-              :class="$style['rollInput']"
+              :class="[$style['rollInput'], { [$style.exactInput]: exact }]"
               :placeholder="t('min')"
               :min="roll?.bounds?.min"
               :max="roll?.bounds?.max"
@@ -72,7 +81,7 @@
             />
             <!-- Atziri Exchange: max only when it is used (right-click clears) -->
             <input
-              :class="$style['rollInput']"
+              :class="[$style['rollInput'], { [$style.exactInput]: exact }]"
               :placeholder="t('max')"
               :min="roll?.bounds?.min"
               :max="roll?.bounds?.max"
@@ -88,7 +97,10 @@
           </div>
         </div>
       </div>
-      <div class="flex">
+      <div
+        v-if="!compact || tradeId === 'item.elemental_dps' || isHidden"
+        class="flex"
+      >
         <div class="w-5 flex items-start">
           <ui-popover
             v-if="isHidden"
@@ -120,6 +132,14 @@
               }}</span
             >
             <filter-modifier-tiers :filter="filter" :item="item" />
+            <!-- Atziri Exchange: special mod markers (display only) -->
+            <span
+              v-for="mk of markers"
+              :key="mk.id"
+              :class="[$style.marker, $style['marker-' + mk.id]]"
+              :title="mk.label"
+              ><i :class="mk.icon"></i
+            ></span>
             <filter-modifier-item-has-empty
               :filter="filter"
               v-if="tradeId === 'item.has_empty_modifier'"
@@ -132,7 +152,7 @@
         </div>
 
         <stat-roll-slider
-          v-if="roll && roll.bounds"
+          v-if="roll && roll.bounds && !compact"
           class="mr-4"
           style="width: 12.5rem"
           v-model="sliderValue"
@@ -170,6 +190,8 @@ import { FilterTag, StatFilter, INTERNAL_TRADE_IDS } from "./interfaces";
 import SourceInfo from "./SourceInfo.vue";
 import FilterModifierItemIsElemental from "./FilterModifierItemIsElemental.vue";
 import { CLIENT_STRINGS as _$ } from "@/assets/data";
+import { ModifierType } from "@/parser/modifiers";
+import { tr } from "@/web/atziri-lang";
 
 export default defineComponent({
   components: {
@@ -195,6 +217,21 @@ export default defineComponent({
     showSources: {
       type: Boolean,
       required: true,
+    },
+    // Atziri Exchange: global "Valeur exacte" is on
+    exact: {
+      type: Boolean,
+      default: false,
+    },
+    // Atziri Exchange: one thin line (properties), no sub-line
+    compact: {
+      type: Boolean,
+      default: false,
+    },
+    // Atziri Exchange: one of the sources also feeds another line
+    shared: {
+      type: Boolean,
+      default: false,
     },
   },
   setup(props, ctx) {
@@ -349,10 +386,69 @@ export default defineComponent({
       );
     });
 
+    // Atziri Exchange: fractured / desecrated / hybrid / corrupted markers
+    const markers = computed(() => {
+      const f = props.filter;
+      const types = f.sources.map((s) => s.modifier.info.type);
+      const out: Array<{ id: string; icon: string; label: string }> = [];
+      if (
+        f.tag === FilterTag.Fractured ||
+        types.includes(ModifierType.Fractured)
+      ) {
+        out.push({
+          id: "fractured",
+          icon: "fas fa-bolt",
+          label: tr(
+            "Fracturé : ce mod ne peut plus changer",
+            "Fractured: this mod can no longer change",
+          ),
+        });
+      }
+      if (
+        f.tag === FilterTag.Desecrated ||
+        types.includes(ModifierType.Desecrated)
+      ) {
+        out.push({
+          id: "desecrated",
+          icon: "fas fa-eye",
+          label: tr("Désacralisé", "Desecrated"),
+        });
+      }
+      if (
+        props.shared ||
+        f.sources.some((s) => (s.modifier.info.hybridWithRef?.size ?? 0) > 0)
+      ) {
+        out.push({
+          id: "hybrid",
+          icon: "fas fa-link",
+          label: tr(
+            "Hybride : un seul mod donne plusieurs lignes",
+            "Hybrid: one mod gives several lines",
+          ),
+        });
+      }
+      if (f.tag === FilterTag.Corrupted) {
+        out.push({
+          id: "corrupted",
+          icon: "fas fa-tint",
+          label: tr("Implicite corrompu", "Corrupted implicit"),
+        });
+      }
+      return out;
+    });
+
     const { t } = useI18n();
 
     return {
       t,
+      markers,
+      compactLabel: computed(() => {
+        const name = text.value
+          .replace(/[+-]?#\s*%?/g, "")
+          .replace(/\s*[:：]\s*$/, "")
+          .trim();
+        return name || text.value;
+      }),
       toggleFromRow,
       showMax,
       showTag,
@@ -487,6 +583,64 @@ export default defineComponent({
     @apply border-gray-500;
     cursor: none;
   }
+}
+
+/* Atziri Exchange: long mod text wraps on 2 lines max */
+.compact {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.compact.isOn {
+  border-left-color: theme("colors.yellow.500");
+}
+
+.compactName {
+  @apply font-semibold text-gray-100;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clamp2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.exactEq {
+  @apply text-yellow-500 font-semibold pr-0.5;
+}
+
+.exactInput {
+  @apply text-yellow-400;
+  border-color: theme("colors.yellow.600") !important;
+}
+
+.marker {
+  @apply rounded text-xs leading-none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  font-size: 0.6rem;
+  cursor: help;
+}
+.marker-fractured {
+  background: #8a5a2b;
+  color: #ffe2c2;
+}
+.marker-desecrated {
+  @apply bg-purple-800 text-purple-100;
+}
+.marker-hybrid {
+  @apply bg-gray-700 text-gray-200;
+}
+.marker-corrupted {
+  @apply bg-red-800 text-red-100;
 }
 
 .qualityLabel {

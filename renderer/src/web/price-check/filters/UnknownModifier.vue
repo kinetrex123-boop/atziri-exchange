@@ -1,14 +1,16 @@
 <template>
-  <div class="flex flex-row justify-between border-b border-gray-700">
-    <div class="py-2 flex flex-col">
+  <div
+    class="flex flex-row flex-wrap justify-between gap-x-2 border-b border-gray-700"
+  >
+    <!-- Atziri Exchange: long text wraps instead of leaving the frame -->
+    <div class="py-2 flex flex-col min-w-0" style="flex: 1 1 14rem">
       <div class="pb-1 flex items-baseline">
         <i class="w-5 shrink-0 fas fa-exclamation-triangle text-orange-400"></i>
         <div
           class="search-text mr-1 relative flex min-w-0"
           style="line-height: 1rem"
         >
-          <span class="truncate"><ItemModifierText :text="stat.text" /></span>
-          <span class="search-text-full whitespace-pre-wrap cursor-default"
+          <span class="whitespace-normal" style="overflow-wrap: anywhere"
             ><ItemModifierText :text="stat.text"
           /></span>
         </div>

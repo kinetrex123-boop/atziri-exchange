@@ -96,6 +96,39 @@
         >{{ t("Gone") }}</span
       >
     </td>
+    <!-- Atziri Exchange: Travel to Hideout, own column on the right edge -->
+    <td class="atz-hideout-cell">
+      <button
+        v-if="result.hideoutToken && !result.isMine"
+        type="button"
+        class="atz-hideout-btn"
+        :class="'atz-hideout-' + hideoutState"
+        :disabled="hideoutState === 'loading'"
+        :title="hideoutTitle"
+        @click.stop="goToHideout"
+      >
+        <i
+          :class="
+            hideoutState === 'loading'
+              ? 'fas fa-spinner fa-spin'
+              : hideoutState === 'ok'
+                ? 'fas fa-check'
+                : 'fas fa-home'
+          "
+        ></i>
+      </button>
+      <span
+        v-else-if="result.isInstantBuyout && !result.isMine"
+        class="atz-hideout-off"
+        :title="
+          tr(
+            'Aller au repaire : connecte-toi au site trade (bouton Trade du Ctrl+D)',
+            'Travel to hideout: log in to the trade site (Trade button of Ctrl+D)',
+          )
+        "
+        ><i class="fas fa-home"></i
+      ></span>
+    </td>
   </tr>
   <div ref="content">
     <!-- isHovered is mostly used here to prevent tooltip from rendering on initial load, tooltip is kinda expensive to mount -->
@@ -112,7 +145,8 @@ import {
   PropType,
   ref,
 } from "vue";
-import { PricingResult } from "./pathofexile-trade";
+import { PricingResult, travelToHideout } from "./pathofexile-trade";
+import { tr } from "@/web/atziri-lang";
 import { ParsedItem } from "@/parser/ParsedItem";
 import { FilterNumeric } from "../filters/interfaces";
 import { useI18nNs } from "@/web/i18n";
@@ -215,8 +249,74 @@ export default defineComponent({
 
       instance?.destroy();
     });
+    // Atziri Exchange: Travel to Hideout, one request per click
+    const hideoutState = ref<
+      "idle" | "loading" | "ok" | "login" | "gone" | "error"
+    >("idle");
+    async function goToHideout() {
+      const token = props.result.hideoutToken;
+      if (!token || hideoutState.value === "loading") return;
+      hideoutState.value = "loading";
+      try {
+        hideoutState.value = await travelToHideout(token);
+      } catch (e) {
+        console.error(e);
+        hideoutState.value = "error";
+      }
+    }
+    const hideoutLabel = computed(() => {
+      switch (hideoutState.value) {
+        case "loading":
+          return tr("Envoi…", "Sending…");
+        case "ok":
+          return tr("Envoyé", "Sent");
+        case "login":
+          return tr("Connexion ?", "Log in?");
+        case "gone":
+          return tr("Vendu", "Gone");
+        case "error":
+          return tr("Erreur", "Error");
+        default:
+          return tr("Repaire", "Hideout");
+      }
+    });
+    const hideoutTitle = computed(() => {
+      switch (hideoutState.value) {
+        case "ok":
+          return tr(
+            "Demande envoyée : le jeu te téléporte au repaire du vendeur",
+            "Request sent: the game takes you to the seller's hideout",
+          );
+        case "login":
+          return tr(
+            "Connecte-toi au site trade : bouton Trade du Ctrl+D, puis Log in",
+            "Log in to the trade site: Trade button of Ctrl+D, then Log in",
+          );
+        case "gone":
+          return tr(
+            "L'objet n'est plus en vente",
+            "The item is no longer listed",
+          );
+        case "error":
+          return tr(
+            "Le site trade a refusé la demande. Re-clique pour réessayer",
+            "The trade site refused the request. Click again to retry",
+          );
+        default:
+          return tr(
+            "Aller au repaire du vendeur (achat instantané)",
+            "Travel to the seller's hideout (instant buyout)",
+          );
+      }
+    });
+
     return {
       t,
+      tr,
+      hideoutState,
+      hideoutLabel,
+      hideoutTitle,
+      goToHideout,
       target,
       content,
       isHovered,
@@ -234,6 +334,50 @@ export default defineComponent({
 </script>
 
 <style lang="postcss">
+/* Atziri Exchange: Travel to Hideout button */
+.atz-hideout-cell {
+  width: 1px;
+  padding: 0 6px 0 4px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.atz-hideout-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.2rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #fff;
+  background: transparent;
+  transition:
+    opacity 0.12s,
+    background-color 0.12s;
+
+  &:hover:not(:disabled) {
+    background: rgb(255 255 255 / 0.12);
+  }
+}
+.atz-hideout-loading {
+  @apply cursor-wait;
+  opacity: 0.8;
+}
+.atz-hideout-ok {
+  @apply text-green-400;
+}
+.atz-hideout-login,
+.atz-hideout-gone,
+.atz-hideout-error {
+  @apply text-red-400;
+}
+.atz-hideout-off {
+  font-size: 0.8rem;
+  @apply text-gray-600;
+  cursor: help;
+}
+
 .tippy-box[data-theme~="item-tooltip"] {
   @apply w-fit h-fit;
   /* hiding box more */

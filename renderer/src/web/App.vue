@@ -18,6 +18,8 @@ const detachedHub = isDetachedHub();
 @import url("@fortawesome/fontawesome-free/css/all.min.css");
 @import url("animate.css/animate.css");
 @import url("../assets/font.css");
+/* Atziri Exchange: visual styles picked in Atziri réglage */
+@import url("./atziri-skins.css");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -1,11 +1,15 @@
 <template>
-  <div>
-    <div class="flex justify-between">
-      <div class="flex flex-wrap items-center pb-3 gap-2">
+  <!-- Atziri Exchange: never squashed by the flex column (content used to overlap) -->
+  <div class="shrink-0">
+    <!-- Atziri Exchange: info pills on the left, actions on the right, one row;
+         when it does not fit, the whole right group goes under, right-aligned -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-3">
+      <div class="flex flex-wrap items-center gap-2" style="flex: 1 1 auto">
         <filter-btn-numeric
           v-if="filters.socketNumber"
           :filter="filters.socketNumber"
           :name="t('item.gem_sockets')"
+          icon="/images/augments/chasse.png"
         />
         <filter-btn-numeric
           v-if="filters.linkedSockets"
@@ -85,6 +89,7 @@
           v-if="filters.augmentSockets"
           :filter="filters.augmentSockets"
           :name="t('item.augment_sockets')"
+          icon="/images/augments/chasse.png"
         />
         <filter-btn-numeric
           v-if="filters.gemLevel"
@@ -152,8 +157,9 @@
           :text="t(`item.${filters.ultimatumHint.value.toLowerCase()}`)"
         />
 
+        <!-- Atziri Exchange: only shown to unfold the stats after "Réduire" -->
         <filter-btn-logical
-          v-if="hasStats"
+          v-if="hasStats && statsVisibility.disabled"
           :collapse="statsVisibility.disabled"
           :filter="statsVisibility"
           :active="totalSelectedMods > 0"
@@ -164,31 +170,118 @@
           "
         />
       </div>
-      <div
-        v-if="showItemEditor !== 'none'"
-        class="flex items-center bg-gray-900 rounded border border-gray-500 justify-center shrink-0 w-8 h-8"
-      >
-        <popover :delay="[0, 500]" placement="right">
-          <template #target>
-            <i
-              v-if="canHaveCatalyst && !currentCatalyst"
-              class="fas fa-question-circle text-gray-400 text-xl" />
-            <img
-              v-else-if="currentCatalyst"
-              :src="currentCatalyst.icon"
-              class="max-w-full max-h-full overflow-hidden" /><img
-              v-else
-              :src="
-                item.augmentSockets?.augments.some((a) => a)
-                  ? '/images/augments/rune.png'
-                  : '/images/augments/empty-socket.png'
-              "
-              class="max-w-full max-h-full overflow-hidden"
-          /></template>
-          <template #content>
-            <item-editor-v2 :item="item" />
-          </template>
-        </popover>
+      <div class="flex items-center gap-2 shrink-0 ml-auto">
+        <!-- Atziri Exchange: check / uncheck every visible line -->
+        <button
+          v-if="hasStats && selectableStats.length"
+          type="button"
+          :class="[$style.exactBtn, { [$style.exactOn]: allSelected }]"
+          :title="
+            allSelected
+              ? tr(
+                  'Tout sélectionner · clic : tout décocher',
+                  'Select all · click: uncheck everything',
+                )
+              : tr(
+                  'Tout sélectionner · clic : cocher toutes les lignes',
+                  'Select all · click: check every line',
+                )
+          "
+          @click="toggleAll"
+        >
+          <i :class="allSelected ? 'fas fa-check-square' : 'far fa-square'"></i>
+          <span>{{ tr("Tout", "All") }}</span>
+        </button>
+        <!-- Atziri Exchange: every search value at the exact item value -->
+        <button
+          v-if="hasStats"
+          type="button"
+          :class="[$style.exactBtn, { [$style.exactOn]: exactValues }]"
+          :title="tr('Valeur exacte', 'Exact value') + ' · ' + exactTitle"
+          @click="exactValues = !exactValues"
+        >
+          <i :class="exactValues ? 'fas fa-lock' : 'fas fa-lock-open'"></i>
+          <span>{{ tr("Exacte", "Exact") }}</span>
+        </button>
+        <div
+          v-if="showItemEditor !== 'none' || augmentStats.length"
+          class="flex items-center bg-gray-900 rounded border border-gray-500 justify-center shrink-0 w-6 h-6 relative cursor-pointer"
+        >
+          <span v-if="augmentStats.length" :class="$style.runeBadge"
+            >{{ augmentSelected }}/{{ augmentStats.length }}</span
+          >
+          <popover
+            trigger="click"
+            placement="bottom-end"
+            theme=""
+            boundary="#price-window"
+          >
+            <template #target>
+              <i
+                v-if="canHaveCatalyst && !currentCatalyst"
+                class="fas fa-question-circle text-gray-400 text-xl" />
+              <img
+                v-else-if="currentCatalyst"
+                :src="currentCatalyst.icon"
+                class="max-w-full max-h-full overflow-hidden" /><img
+                v-else
+                :src="
+                  item.augmentSockets?.augments.some((a) => a)
+                    ? '/images/augments/rune.png'
+                    : '/images/augments/empty-socket.png'
+                "
+                class="max-w-full max-h-full overflow-hidden"
+            /></template>
+            <template #content>
+              <!-- Atziri Exchange: augment lines live here now -->
+              <div v-if="augmentStats.length" :class="$style.augPop">
+                <div :class="$style.groupHead" style="cursor: default">
+                  <span>{{ tr("Augmentations", "Augments") }}</span>
+                  <span :class="$style.groupCount"
+                    >{{ augmentSelected }}/{{ augmentStats.length }}</span
+                  >
+                  <button
+                    type="button"
+                    :class="$style.groupBtn"
+                    @click.stop="setGroup(augmentStats, true)"
+                  >
+                    {{ tr("Tout", "All") }}
+                  </button>
+                  <button
+                    type="button"
+                    :class="$style.groupBtn"
+                    @click.stop="setGroup(augmentStats, false)"
+                  >
+                    {{ tr("Aucun", "None") }}
+                  </button>
+                </div>
+                <filter-modifier
+                  v-for="filter of augmentStats"
+                  :key="filter.tag + '/' + filter.text"
+                  :filter="filter"
+                  :item="item"
+                  :show-sources="showFilterSources"
+                  :exact="exactValues"
+                  @submit="handleStatsSubmit"
+                />
+                <button
+                  v-if="showItemEditor !== 'none'"
+                  type="button"
+                  :class="$style.editorLink"
+                  @click.stop="showEditor = !showEditor"
+                >
+                  <i
+                    class="fas text-xs"
+                    :class="showEditor ? 'fa-chevron-up' : 'fa-chevron-down'"
+                  ></i>
+                  {{ tr("Modifier les augmentations", "Edit augments") }}
+                </button>
+                <item-editor-v2 v-if="showEditor" :item="item" />
+              </div>
+              <item-editor-v2 v-else :item="item" />
+            </template>
+          </popover>
+        </div>
       </div>
     </div>
     <!-- Handled parse error -->
@@ -254,6 +347,9 @@
               :filter="filter"
               :item="item"
               :show-sources="showFilterSources"
+              :exact="exactValues"
+              :shared="sharedFilters.has(filter)"
+              :compact="group.id === 'property'"
               @submit="handleStatsSubmit"
             />
           </template>
@@ -314,15 +410,11 @@
           class="text-gray-400 pt-2"
           >{{ t(hiddenLabel) }}</ui-toggle
         >
-        <!-- Atziri Exchange: exact values instead of the ±% range -->
         <ui-toggle
-          v-model="exactValues"
+          v-model="showFilterSources"
           class="ml-auto text-gray-400 pt-2"
-          >{{ tr("Valeur exacte", "Exact value") }}</ui-toggle
+          >{{ t("filters.mods_toggle") }}</ui-toggle
         >
-        <ui-toggle v-model="showFilterSources" class="text-gray-400 pt-2">{{
-          t("filters.mods_toggle")
-        }}</ui-toggle>
       </div>
     </div>
   </div>
@@ -401,6 +493,7 @@ export default defineComponent({
         showHidden.value = false;
         statsVisibility.disabled = false;
         exactValues.value = false;
+        showEditor.value = false;
         savedRolls = new WeakMap();
       },
     );
@@ -420,8 +513,10 @@ export default defineComponent({
           // keep the side the filter searches on (min, or max when inverted)
           if (roll.min !== undefined && roll.min !== "") roll.min = roll.value;
           if (roll.max !== undefined && roll.max !== "") roll.max = roll.value;
-          if ((roll.min === undefined || roll.min === "") &&
-              (roll.max === undefined || roll.max === "")) {
+          if (
+            (roll.min === undefined || roll.min === "") &&
+            (roll.max === undefined || roll.max === "")
+          ) {
             roll.min = roll.value;
           }
         } else {
@@ -539,21 +634,79 @@ export default defineComponent({
       }
     });
 
+    // Atziri Exchange: augments moved to the rune popover
+    const showEditor = shallowRef(false);
+    const augmentStats = computed(() =>
+      filteredStats.value.filter((s) => groupOf(s) === "augment"),
+    );
+    const augmentSelected = computed(
+      () => augmentStats.value.filter((s) => !s.disabled).length,
+    );
+
+    // Atziri Exchange: lines fed by a mod that also feeds another line (hybrid)
+    const sharedFilters = computed(() => {
+      const owners = new Map<object, StatFilter[]>();
+      for (const f of props.stats) {
+        if (f.tag === FilterTag.Property || f.tag === FilterTag.Pseudo)
+          continue;
+        for (const src of f.sources) {
+          const list = owners.get(src.modifier) ?? [];
+          if (!list.includes(f)) list.push(f);
+          owners.set(src.modifier, list);
+        }
+      }
+      const out = new Set<StatFilter>();
+      for (const list of owners.values()) {
+        if (list.length > 1) list.forEach((f) => out.add(f));
+      }
+      return out;
+    });
+
+    // Atziri Exchange: "Tout sélectionner" (visible lines, augments excluded)
+    const selectableStats = computed(() =>
+      showHidden.value
+        ? []
+        : filteredStats.value.filter((s) => groupOf(s) !== "augment"),
+    );
+    const allSelected = computed(
+      () =>
+        selectableStats.value.length > 0 &&
+        selectableStats.value.every((s) => !s.disabled),
+    );
+    function toggleAll() {
+      const on = !allSelected.value;
+      for (const s of selectableStats.value) s.disabled = !on;
+    }
+
     const statGroups = computed(() =>
-      GROUPS.map((g) => {
-        const stats = filteredStats.value.filter((s) => groupOf(s) === g.id);
-        return {
-          ...g,
-          stats,
-          selected: stats.filter((s) => !s.disabled).length,
-        };
-      }).filter((g) => g.stats.length),
+      GROUPS.filter((g) => g.id !== "augment")
+        .map((g) => {
+          const stats = filteredStats.value.filter((s) => groupOf(s) === g.id);
+          return {
+            ...g,
+            stats,
+            selected: stats.filter((s) => !s.disabled).length,
+          };
+        })
+        .filter((g) => g.stats.length),
     );
 
     return {
       t,
       tr,
       exactValues,
+      exactTitle: computed(() =>
+        exactValues.value
+          ? tr("Revenir aux marges d'avant", "Back to the previous ranges")
+          : tr("Toutes les valeurs à l'exact", "Every value at the exact roll"),
+      ),
+      showEditor,
+      selectableStats,
+      allSelected,
+      toggleAll,
+      augmentStats,
+      augmentSelected,
+      sharedFilters,
       collapsedGroups,
       statGroups,
       toggleGroup,
@@ -665,6 +818,60 @@ export default defineComponent({
 
   &:hover {
     border-color: theme("colors.blue.400");
+  }
+}
+
+.exactBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 1.5rem;
+  padding: 0 8px;
+  white-space: nowrap;
+  @apply rounded border border-gray-700 bg-gray-900 text-gray-500 text-xs;
+
+  &:hover {
+    @apply border-gray-500 text-gray-300;
+  }
+}
+
+.exactOn {
+  @apply text-yellow-300;
+  border-color: theme("colors.yellow.500");
+  background: rgb(120 90 20 / 0.35);
+
+  &:hover {
+    @apply text-yellow-200;
+    border-color: theme("colors.yellow.400");
+  }
+}
+
+.runeBadge {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  z-index: 1;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 0.6rem;
+  line-height: 0.9rem;
+  @apply bg-red-800 text-white;
+  pointer-events: none;
+}
+
+.augPop {
+  width: 26rem;
+  max-width: 80vw;
+  @apply bg-gray-900 text-gray-200 p-2 rounded;
+  text-align: left;
+}
+
+.editorLink {
+  margin-top: 6px;
+  @apply text-xs text-gray-400;
+
+  &:hover {
+    @apply text-white;
   }
 }
 

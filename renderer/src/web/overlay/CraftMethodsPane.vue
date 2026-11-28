@@ -110,8 +110,14 @@
             >
               <span
                 class="cr-bi"
-                :title="isFr ? baseIcon(m.icon).fr : baseIcon(m.icon).en"
-                ><img :src="baseIcon(m.icon).img" alt=""
+                :title="
+                  m.customIcon
+                    ? tr('Icône perso', 'Own icon')
+                    : isFr
+                      ? baseIcon(m.icon).fr
+                      : baseIcon(m.icon).en
+                "
+                ><img :src="iconSrc(m)" alt=""
               /></span>
               <b class="cr-bname">{{ m.name }}</b>
               <i
@@ -171,15 +177,42 @@
                 :key="ic.id"
                 type="button"
                 class="cr-icb"
-                :class="{ on: methodForm.icon === ic.id }"
-                @click="methodForm.icon = ic.id"
+                :class="{ on: !methodForm.custom && methodForm.icon === ic.id }"
+                @click="((methodForm.icon = ic.id), (methodForm.custom = null))"
               >
                 <span><img :src="ic.img" alt="" /></span>
                 {{ isFr ? ic.fr : ic.en }}
               </button>
             </div>
             <div class="fm-head cr-mt">
+              <span v-if="iconError" class="cr-err">{{ iconError }}</span>
               <span class="fm-sp"></span>
+              <button
+                v-if="methodForm.custom"
+                type="button"
+                class="cr-icb cm-own on"
+                :title="tr('Icône perso choisie', 'Own icon chosen')"
+              >
+                <span><img :src="methodForm.custom" alt="" /></span>
+              </button>
+              <button
+                type="button"
+                class="fm-btn"
+                :title="
+                  tr(
+                    'Choisir une image sur ton PC : elle est mise au format de l\'icône',
+                    'Pick a picture on your PC: it is fitted to the icon size',
+                  )
+                "
+                @click="iconInput?.click()"
+              >
+                <i class="fas fa-upload"></i>
+                {{
+                  methodForm.custom
+                    ? tr("Changer mon icône", "Change my icon")
+                    : tr("Mon icône…", "My icon…")
+                }}
+              </button>
               <button type="button" class="fm-btn" @click="methodForm = null">
                 {{ tr("Annuler", "Cancel") }}
               </button>
@@ -214,9 +247,7 @@
           <button type="button" class="fm-btn" @click="closeMethod">
             <i class="fas fa-arrow-left"></i> {{ tr("Méthodes", "Methods") }}
           </button>
-          <span class="cr-bi cm-bi"
-            ><img :src="baseIcon(method.icon).img" alt=""
-          /></span>
+          <span class="cr-bi cm-bi"><img :src="iconSrc(method)" alt="" /></span>
           <b class="cm-title">{{ method.name }}</b>
           <span class="fm-cap">· {{ catName(method.catId) }}</span>
           <span class="fm-sp"></span>
@@ -265,12 +296,46 @@
             >
               + {{ tr("Coller un lien trade", "Paste a trade link") }}
             </button>
+            <div
+              class="cm-zoom"
+              :title="
+                tr(
+                  'Zoom de la page de notes (aussi Ctrl + molette)',
+                  'Zoom of the notes page (also Ctrl + wheel)',
+                )
+              "
+            >
+              <button
+                type="button"
+                class="fm-btn"
+                :disabled="scale <= ZOOMS[0]"
+                :title="tr('Dézoomer', 'Zoom out')"
+                @click="stepZoom(-1)"
+              >
+                <i class="fas fa-search-minus"></i>
+              </button>
+              <button
+                type="button"
+                class="fm-btn cm-zval"
+                :title="tr('Revenir à 100 %', 'Back to 100%')"
+                @click="setZoom(1)"
+              >
+                {{ Math.round(scale * 100) }} %
+              </button>
+              <button
+                type="button"
+                class="fm-btn"
+                :disabled="scale >= ZOOMS[ZOOMS.length - 1]"
+                :title="tr('Zoomer', 'Zoom in')"
+                @click="stepZoom(1)"
+              >
+                <i class="fas fa-search-plus"></i>
+              </button>
+            </div>
           </div>
           <div v-if="method.links.length" class="cr-bases">
             <div v-for="l in method.links" :key="l.id" class="cr-base">
-              <span class="cr-bi"
-                ><img :src="baseIcon(method.icon).img" alt=""
-              /></span>
+              <span class="cr-bi"><img :src="iconSrc(method)" alt="" /></span>
               <b class="cr-bname" :title="l.name">{{ l.name }}</b>
               <button
                 type="button"
@@ -459,123 +524,143 @@
           :class="{ locked: method.locked, ['tool-' + tool]: !method.locked }"
           @dragover.prevent
           @drop.prevent="onBoardDrop"
+          @wheel="onBoardWheel"
         >
           <div
-            ref="canvas"
-            class="cm-canvas"
-            :style="{ width: extent.w + 'px', height: extent.h + 'px' }"
-            @pointerdown="onBoardDown"
-            @pointermove="lastPoint = pt($event)"
+            class="cm-sizer"
+            :style="{
+              width: extent.w * scale + 'px',
+              height: extent.h * scale + 'px',
+            }"
           >
-            <p v-if="!items.length && !method.locked" class="cm-empty">
-              {{
-                tr(
-                  "Page vide. Outil Texte puis clic pour écrire, Flèche ou Cadre puis glisser pour tracer, Ctrl + V pour coller une capture.",
-                  "Empty page. Text tool then click to write, Arrow or Frame then drag to draw, Ctrl + V to paste a screenshot.",
-                )
-              }}
-            </p>
-
-            <!-- frames, images, texts (in this order: texts stay clickable inside a frame) -->
             <div
-              v-for="it in layered"
-              :key="it.id"
-              class="cm-item"
-              :class="[
-                'cm-' + it.kind,
-                { sel: sel === it.id && !method.locked },
-              ]"
-              :style="itemStyle(it)"
-              @pointerdown.stop="onItemDown(it, $event)"
-              @dblclick.stop="
-                it.kind === 'text' && !method.locked && startEdit(it)
-              "
+              ref="canvas"
+              class="cm-canvas"
+              :style="{
+                width: 100 / scale + '%',
+                height: 100 / scale + '%',
+                transform: scale === 1 ? undefined : `scale(${scale})`,
+              }"
+              @pointerdown="onBoardDown"
+              @pointermove="lastPoint = pt($event)"
             >
-              <img
-                v-if="it.kind === 'image'"
-                :src="
-                  it.imageId != null ? imageUrls.get(it.imageId) : undefined
-                "
-                alt=""
-                draggable="false"
-                @click="
-                  method.locked &&
-                  it.imageId != null &&
-                  (zoom = imageUrls.get(it.imageId) ?? null)
-                "
-              />
-              <template v-else-if="it.kind === 'text'">
-                <textarea
-                  v-if="editing === it.id"
-                  ref="editBox"
-                  v-model="editText"
-                  class="cm-edit"
-                  :style="{ color: it.color, fontSize: it.size + 'px' }"
-                  spellcheck="false"
-                  @pointerdown.stop
-                  @input="autoGrow"
-                  @blur="endEdit"
-                  @keydown.esc.stop.prevent="endEdit"
-                ></textarea>
-                <div v-else class="cm-txt">{{ it.text }}</div>
-              </template>
-              <span
-                v-if="sel === it.id && !method.locked && editing !== it.id"
-                class="cm-handle"
-                :title="tr('Redimensionner', 'Resize')"
-                @pointerdown.stop="onResizeDown(it, $event)"
-              ></span>
-            </div>
+              <p v-if="!items.length && !method.locked" class="cm-empty">
+                {{
+                  tr(
+                    "Page vide. Outil Texte puis clic pour écrire, Flèche ou Cadre puis glisser pour tracer, Ctrl + V pour coller une capture.",
+                    "Empty page. Text tool then click to write, Arrow or Frame then drag to draw, Ctrl + V to paste a screenshot.",
+                  )
+                }}
+              </p>
 
-            <!-- arrows -->
-            <svg class="cm-svg" :width="extent.w" :height="extent.h">
-              <g
-                v-for="a in arrows"
-                :key="a.id"
-                :class="{ sel: sel === a.id && !method.locked }"
+              <!-- frames, images, texts (in this order: texts stay clickable inside a frame) -->
+              <div
+                v-for="it in layered"
+                :key="it.id"
+                class="cm-item"
+                :class="[
+                  'cm-' + it.kind,
+                  { sel: sel === it.id && !method.locked },
+                ]"
+                :style="itemStyle(it)"
+                @pointerdown.stop="onItemDown(it, $event)"
+                @dblclick.stop="
+                  it.kind === 'text' && !method.locked && startEdit(it)
+                "
               >
-                <line
-                  v-if="!method.locked"
-                  class="cm-hit"
-                  :x1="a.x"
-                  :y1="a.y"
-                  :x2="a.x2"
-                  :y2="a.y2"
-                  @pointerdown.stop="onItemDown(a, $event)"
+                <img
+                  v-if="it.kind === 'image'"
+                  :src="
+                    it.imageId != null ? imageUrls.get(it.imageId) : undefined
+                  "
+                  alt=""
+                  draggable="false"
+                  @click="
+                    method.locked &&
+                    it.imageId != null &&
+                    (zoom = imageUrls.get(it.imageId) ?? null)
+                  "
                 />
-                <line
-                  :x1="a.x"
-                  :y1="a.y"
-                  :x2="lineEnd(a).x"
-                  :y2="lineEnd(a).y"
-                  :stroke="a.color"
-                  :stroke-width="a.size"
-                  stroke-linecap="round"
-                />
-                <polygon :points="arrowHead(a)" :fill="a.color" />
-                <template v-if="sel === a.id && !method.locked">
-                  <circle
-                    class="cm-end"
-                    :cx="a.x"
-                    :cy="a.y"
-                    r="6"
-                    @pointerdown.stop="onEndDown(a, 1, $event)"
-                  />
-                  <circle
-                    class="cm-end"
-                    :cx="a.x2"
-                    :cy="a.y2"
-                    r="6"
-                    @pointerdown.stop="onEndDown(a, 2, $event)"
-                  />
+                <template v-else-if="it.kind === 'text'">
+                  <textarea
+                    v-if="editing === it.id"
+                    ref="editBox"
+                    v-model="editText"
+                    class="cm-edit"
+                    :style="{ color: it.color, fontSize: it.size + 'px' }"
+                    spellcheck="false"
+                    @pointerdown.stop
+                    @input="autoGrow"
+                    @blur="endEdit"
+                    @keydown.esc.stop.prevent="endEdit"
+                  ></textarea>
+                  <div v-else class="cm-txt">{{ it.text }}</div>
                 </template>
-              </g>
-            </svg>
+                <span
+                  v-if="sel === it.id && !method.locked && editing !== it.id"
+                  class="cm-handle"
+                  :title="tr('Redimensionner', 'Resize')"
+                  @pointerdown.stop="onResizeDown(it, $event)"
+                ></span>
+              </div>
+
+              <!-- arrows -->
+              <svg class="cm-svg" :width="extent.w" :height="extent.h">
+                <g
+                  v-for="a in arrows"
+                  :key="a.id"
+                  :class="{ sel: sel === a.id && !method.locked }"
+                >
+                  <line
+                    v-if="!method.locked"
+                    class="cm-hit"
+                    :x1="a.x"
+                    :y1="a.y"
+                    :x2="a.x2"
+                    :y2="a.y2"
+                    @pointerdown.stop="onItemDown(a, $event)"
+                  />
+                  <line
+                    :x1="a.x"
+                    :y1="a.y"
+                    :x2="lineEnd(a).x"
+                    :y2="lineEnd(a).y"
+                    :stroke="a.color"
+                    :stroke-width="a.size"
+                    stroke-linecap="round"
+                  />
+                  <polygon :points="arrowHead(a)" :fill="a.color" />
+                  <template v-if="sel === a.id && !method.locked">
+                    <circle
+                      class="cm-end"
+                      :cx="a.x"
+                      :cy="a.y"
+                      r="6"
+                      @pointerdown.stop="onEndDown(a, 1, $event)"
+                    />
+                    <circle
+                      class="cm-end"
+                      :cx="a.x2"
+                      :cy="a.y2"
+                      r="6"
+                      @pointerdown.stop="onEndDown(a, 2, $event)"
+                    />
+                  </template>
+                </g>
+              </svg>
+            </div>
           </div>
         </div>
       </template>
     </div>
 
+    <input
+      ref="iconInput"
+      type="file"
+      accept="image/*"
+      hidden
+      @change="onIconPicked"
+    />
     <input
       ref="fileInput"
       type="file"
@@ -623,6 +708,7 @@ import {
   deleteMethod,
   placeMethod,
   storeImage,
+  makeCustomIcon,
   gcImages,
   newId,
   BOARD_COLORS,
@@ -684,12 +770,20 @@ const methodForm = ref<{
   id: number | null;
   name: string;
   icon: string;
+  custom: string | null;
 } | null>(null);
 const methodInput = shallowRef<HTMLInputElement[] | HTMLInputElement | null>(
   null,
 );
 function startAddMethod(catId: number) {
-  methodForm.value = { catId, id: null, name: "", icon: "armour" };
+  methodForm.value = {
+    catId,
+    id: null,
+    name: "",
+    icon: "armour",
+    custom: null,
+  };
+  iconError.value = "";
   nextTick(() => focusRef(methodInput.value));
 }
 function startEditMethod(m: CraftMethod) {
@@ -698,7 +792,9 @@ function startEditMethod(m: CraftMethod) {
     id: m.id,
     name: m.name,
     icon: baseIcon(m.icon).id,
+    custom: m.customIcon ?? null,
   };
+  iconError.value = "";
   nextTick(() => focusRef(methodInput.value));
 }
 function saveMethod() {
@@ -711,13 +807,41 @@ function saveMethod() {
       `Method ${methodsOf(f.catId).length + 1}`,
     );
   if (f.id == null) {
-    const id = addMethod(f.catId, name, f.icon);
+    const id = addMethod(f.catId, name, f.icon, f.custom ?? undefined);
     methodForm.value = null;
     openMethod(id);
     return;
   }
-  updateMethod(f.id, (m) => ({ ...m, name, icon: f.icon }));
+  updateMethod(f.id, (m) => {
+    const next: CraftMethod = { ...m, name, icon: f.icon };
+    if (f.custom) next.customIcon = f.custom;
+    else delete next.customIcon;
+    return next;
+  });
   methodForm.value = null;
+}
+/** the picture of a method: the user's own icon, else the chosen game icon */
+function iconSrc(m: CraftMethod) {
+  return m.customIcon || baseIcon(m.icon).img;
+}
+const iconInput = shallowRef<HTMLInputElement | null>(null);
+const iconError = shallowRef("");
+async function onIconPicked(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file || !methodForm.value) return;
+  const url = await makeCustomIcon(file);
+  if (!methodForm.value) return;
+  if (!url) {
+    iconError.value = tr(
+      "Image illisible : choisis un PNG, JPG ou WEBP.",
+      "Unreadable picture: pick a PNG, JPG or WEBP.",
+    );
+    return;
+  }
+  iconError.value = "";
+  methodForm.value.custom = url;
 }
 async function confirmDeleteMethod(m: CraftMethod) {
   if (
@@ -1045,10 +1169,56 @@ function arrowHead(a: BoardItem) {
 }
 function pt(e: { clientX: number; clientY: number }) {
   const r = canvas.value!.getBoundingClientRect();
+  const k = scale.value;
   return {
-    x: Math.round(e.clientX - r.left),
-    y: Math.round(e.clientY - r.top),
+    x: Math.round((e.clientX - r.left) / k),
+    y: Math.round((e.clientY - r.top) / k),
   };
+}
+
+// ---- zoom of the notes page (view only: the notes keep their real size) ----
+const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+const ZOOM_KEY = "atziri-craft-methods-zoom";
+function loadZoom() {
+  try {
+    const z = Number(localStorage.getItem(ZOOM_KEY));
+    return ZOOMS.includes(z) ? z : 1;
+  } catch {
+    return 1;
+  }
+}
+const scale = shallowRef(loadZoom());
+/** keeps the point under (cx, cy) of the board in place while zooming */
+function setZoom(z: number, cx?: number, cy?: number) {
+  const sc = scroller.value;
+  const old = scale.value;
+  if (z === old) return;
+  const vx = cx ?? (sc ? sc.clientWidth / 2 : 0);
+  const vy = cy ?? (sc ? sc.clientHeight / 2 : 0);
+  const px = sc ? (sc.scrollLeft + vx) / old : 0;
+  const py = sc ? (sc.scrollTop + vy) / old : 0;
+  scale.value = z;
+  try {
+    localStorage.setItem(ZOOM_KEY, String(z));
+  } catch {
+    /* zoom just isn't remembered */
+  }
+  nextTick(() => {
+    if (!sc) return;
+    sc.scrollLeft = px * z - vx;
+    sc.scrollTop = py * z - vy;
+  });
+}
+function stepZoom(dir: -1 | 1, cx?: number, cy?: number) {
+  const i = ZOOMS.findIndex((z) => z >= scale.value - 1e-6);
+  const next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + dir))];
+  setZoom(next, cx, cy);
+}
+function onBoardWheel(e: WheelEvent) {
+  if (!e.ctrlKey || !scroller.value) return;
+  e.preventDefault();
+  const r = scroller.value.getBoundingClientRect();
+  stepZoom(e.deltaY < 0 ? 1 : -1, e.clientX - r.left, e.clientY - r.top);
 }
 function newItem(kind: BoardItem["kind"], p: Partial<BoardItem>): BoardItem {
   return {
@@ -1278,7 +1448,11 @@ function onBoardDrop(e: DragEvent) {
 function placeAt(): { x: number; y: number } {
   if (lastPoint.value) return lastPoint.value;
   const s = scroller.value;
-  return { x: (s?.scrollLeft ?? 0) + 20, y: (s?.scrollTop ?? 0) + 20 };
+  const k = scale.value;
+  return {
+    x: Math.round((s?.scrollLeft ?? 0) / k) + 20,
+    y: Math.round((s?.scrollTop ?? 0) / k) + 20,
+  };
 }
 async function addImage(file: Blob, at?: { x: number; y: number }) {
   const m = method.value;
@@ -1288,14 +1462,15 @@ async function addImage(file: Blob, at?: { x: number; y: number }) {
   if (!img || method.value?.id !== m.id) return;
   // fits in the visible part of the page (its corner stays reachable)
   const sc = scroller.value;
-  const viewW = sc?.clientWidth ?? 800;
-  const viewH = sc?.clientHeight ?? 500;
+  const k = scale.value;
+  const viewW = (sc?.clientWidth ?? 800) / k;
+  const viewH = (sc?.clientHeight ?? 500) / k;
   const w = Math.round(
     Math.min(img.w, 520, viewW - 40, ((viewH - 40) * img.w) / img.h),
   );
   const h = Math.round((img.h * w) / img.w);
-  const left = sc?.scrollLeft ?? 0;
-  const top = sc?.scrollTop ?? 0;
+  const left = (sc?.scrollLeft ?? 0) / k;
+  const top = (sc?.scrollTop ?? 0) / k;
   const it = newItem("image", {
     x: Math.max(left + 10, Math.min(p.x, left + viewW - w - 20)),
     y: Math.max(top + 10, Math.min(p.y, top + viewH - h - 20)),
@@ -1393,12 +1568,24 @@ onUnmounted(() => {
   color: var(--accent);
 }
 .cm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px 10px;
 }
+/* a method tile is as wide as its name (it only cuts a name longer than the row) */
 .cm-card {
   cursor: pointer;
+  max-width: 100%;
+}
+.cm-card .cr-bname {
+  flex: 0 1 auto;
+}
+.fm-wrap .cm-grid .cm-add {
+  min-width: 15rem;
+}
+.fm-wrap .cr-icb.cm-own {
+  padding: 3px;
+  cursor: default;
 }
 .cm-card:hover {
   border-color: var(--accent);
@@ -1502,10 +1689,27 @@ onUnmounted(() => {
 .cm-board.locked {
   background-image: none;
 }
-.cm-canvas {
+.cm-sizer {
   position: relative;
   min-width: 100%;
   min-height: 100%;
+}
+.cm-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+.cm-zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+.fm-wrap .cm-zval {
+  min-width: 4.2rem;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
 }
 .cm-board.tool-text .cm-canvas {
   cursor: text;

@@ -54,6 +54,8 @@
             <th v-if="showSeller" class="trade-table-heading w-full">
               <div class="px-2">{{ t(":seller") }}</div>
             </th>
+            <!-- Atziri Exchange: Travel to Hideout column -->
+            <th class="trade-table-heading"></th>
           </tr>
         </thead>
         <tbody style="overflow: scroll">

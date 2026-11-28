@@ -288,6 +288,362 @@
       </div>
       <p v-if="backupMsg" class="text-sm mt-2" :class="backupError ? 'text-red-400' : 'text-gray-400'">{{ backupMsg }}</p>
     </div>
+
+    <!-- Visual style: only the look changes (colors, borders, glows), never fonts or layout -->
+    <div class="mb-4 mt-6">
+      <div class="flex-1 mb-1">{{ tr("Style visuel", "Visual style") }}</div>
+      <p class="text-gray-500 text-sm mb-3">
+        {{
+          tr(
+            "Change seulement l'aspect de l'overlay : la police, la disposition et les fonctions restent les mêmes.",
+            "Only changes how the overlay looks: fonts, layout and features stay the same.",
+          )
+        }}
+      </p>
+      <div class="atz-orn-wrap">
+        <div class="atz-skin-grid atz-style-col">
+          <button
+            v-for="skin in SKINS"
+            :key="skin.id"
+            type="button"
+            class="atz-skin-card"
+            :class="{ 'is-active': activeSkin === skin.id }"
+            @click="setSkin(skin.id)"
+          >
+            <span
+              class="atz-skin-preview"
+              :class="`atz-skin-preview--${skin.id}`"
+              :style="{ '--p-bg': skinPreviews[skin.id][0], '--p-accent': skinPreviews[skin.id][1] }"
+            >
+              <span class="atz-skin-bar"></span>
+              <span class="atz-skin-line"></span>
+              <span class="atz-skin-line atz-skin-line--short"></span>
+            </span>
+            <span class="atz-skin-name">
+              <i v-if="activeSkin === skin.id" class="fas fa-check"></i>
+              {{ tr(skin.fr, skin.en) }}
+            </span>
+          </button>
+        </div>
+
+        <!-- color of the style, next to the cards -->
+        <div class="atz-tint atz-tint--style">
+          <div class="atz-fx-label mb-1">{{ tr("Couleur du style", "Style color") }}</div>
+          <p v-if="!activeSkinHasColors" class="atz-fx-hint">
+            {{
+              tr(
+                "Classique et Personnalisé gardent tes propres couleurs : règle-les dans « Couleurs de l'overlay ».",
+                "Classic and Custom keep your own colors: set them in Overlay colors.",
+              )
+            }}
+          </p>
+          <template v-else>
+            <div class="flex flex-wrap gap-1 mb-2">
+              <button
+                v-for="m in TINT_MODES"
+                :key="m.id"
+                type="button"
+                class="atz-preset atz-preset--sm"
+                :class="{ 'is-active': currentStyleTint.mode === m.id }"
+                @click="setStyleTint({ mode: m.id })"
+              >
+                {{ tr(m.fr, m.en) }}
+              </button>
+            </div>
+
+            <div class="atz-tint-palette">
+              <button
+                v-for="c in STYLE_PALETTE"
+                :key="c.c"
+                type="button"
+                class="atz-tint-swatch"
+                :class="{ 'is-active': currentStyleTint.mode === 'color' && currentStyleTint.c1 === c.c }"
+                :style="{ background: c.c }"
+                :title="tr(c.fr, c.en)"
+                @click="setStyleTint({ mode: 'color', c1: c.c })"
+              ></button>
+            </div>
+
+            <template v-if="currentStyleTint.mode === 'hue'">
+              <label class="atz-tint-row">
+                <span class="atz-fx-label">{{ tr("Teinte", "Hue") }}</span>
+                <input
+                  type="range"
+                  min="-180"
+                  max="180"
+                  step="5"
+                  :value="currentStyleTint.hue"
+                  @input="setStyleTint({ hue: Number(($event.target as HTMLInputElement).value) })"
+                />
+                <span class="atz-fx-val">{{ currentStyleTint.hue }}°</span>
+              </label>
+              <label class="atz-tint-row">
+                <span class="atz-fx-label">{{ tr("Saturation", "Saturation") }}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  :value="currentStyleTint.sat"
+                  @input="setStyleTint({ sat: Number(($event.target as HTMLInputElement).value) })"
+                />
+                <span class="atz-fx-val">{{ currentStyleTint.sat }} %</span>
+              </label>
+              <label class="atz-tint-row">
+                <span class="atz-fx-label">{{ tr("Luminosité", "Brightness") }}</span>
+                <input
+                  type="range"
+                  min="40"
+                  max="160"
+                  step="5"
+                  :value="currentStyleTint.light"
+                  @input="setStyleTint({ light: Number(($event.target as HTMLInputElement).value) })"
+                />
+                <span class="atz-fx-val">{{ currentStyleTint.light }} %</span>
+              </label>
+            </template>
+            <div v-else-if="currentStyleTint.mode === 'color'" class="atz-tint-colors">
+              <label>
+                <input
+                  type="color"
+                  :value="currentStyleTint.c1"
+                  @input="setStyleTint({ c1: ($event.target as HTMLInputElement).value })"
+                />
+                <span>{{ tr("Couleur d'accent", "Accent color") }}</span>
+              </label>
+            </div>
+            <p v-else class="atz-fx-hint">
+              {{
+                tr(
+                  "Choisis une couleur dans la palette, ou Teinte pour décaler toutes les couleurs du style.",
+                  "Pick a color in the palette, or Hue to shift every color of the style.",
+                )
+              }}
+            </p>
+          </template>
+        </div>
+      </div>
+      <p v-if="activeSkin !== 'classic'" class="text-gray-500 text-sm mt-2">
+        {{
+          tr(
+            "Tu peux encore retoucher les couleurs à droite. Revenir à Classique remet tes couleurs d'avant.",
+            "You can still adjust the colors on the right. Going back to Classic restores your previous colors.",
+          )
+        }}
+      </p>
+
+      <!-- Extra look settings -->
+      <div class="atz-fx">
+        <label class="atz-fx-row">
+          <span class="atz-fx-label">{{ tr("Intensité des effets", "Effect intensity") }}</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="5"
+            :value="skinFx.intensity"
+            @input="setSkinFx({ intensity: Number(($event.target as HTMLInputElement).value) })"
+          />
+          <span class="atz-fx-val">{{ skinFx.intensity }} %</span>
+        </label>
+        <label class="atz-fx-row">
+          <span class="atz-fx-label">{{ tr("Opacité du fond de l'overlay", "Overlay background opacity") }}</span>
+          <input
+            type="range"
+            min="30"
+            max="100"
+            step="5"
+            :value="skinFx.opacity"
+            @input="setSkinFx({ opacity: Number(($event.target as HTMLInputElement).value) })"
+          />
+          <span class="atz-fx-val">{{ skinFx.opacity }} %</span>
+        </label>
+
+        <div class="atz-orn-wrap mt-3">
+          <div class="atz-orn-col">
+            <div class="atz-fx-label mb-1">{{ tr("Ornement du cadre", "Frame ornament") }}</div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="o in ornamentChoices"
+                :key="o.id"
+                type="button"
+                class="atz-preset"
+                :class="{ 'is-active': currentOrnament === o.id }"
+                @click="setOrnament(o.id)"
+              >
+                {{ tr(o.fr, o.en) }}
+              </button>
+            </div>
+          </div>
+
+          <!-- color of the ornament, next to the list -->
+          <div v-if="currentOrnament !== 'none'" class="atz-tint">
+            <div class="atz-tint-head">
+              <div
+                class="atz-tint-preview"
+                :class="{ 'atz-tint-preview--img': !!ornPreviewImg }"
+                :style="{ filter: tintFilter }"
+              >
+                <img v-if="ornPreviewImg" :src="ornPreviewImg" alt="" />
+              </div>
+              <div class="min-w-0">
+                <div class="atz-fx-label mb-1">{{ tr("Couleur des ornements", "Ornament color") }}</div>
+                <div class="flex flex-wrap gap-1">
+                  <button
+                    v-for="m in TINT_MODES"
+                    :key="m.id"
+                    type="button"
+                    class="atz-preset atz-preset--sm"
+                    :class="{ 'is-active': currentTint.mode === m.id }"
+                    @click="setOrnTint({ mode: m.id })"
+                  >
+                    {{ tr(m.fr, m.en) }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="atz-tint-palette">
+              <button
+                v-for="c in TINT_PALETTE"
+                :key="c.c1"
+                type="button"
+                class="atz-tint-swatch"
+                :class="{ 'is-active': currentTint.mode === 'color' && currentTint.c1 === c.c1 && currentTint.c2 === c.c2 }"
+                :style="{ background: `linear-gradient(135deg, ${c.c1} 0 55%, ${c.c2} 55% 100%)` }"
+                :title="tr(c.fr, c.en)"
+                @click="setOrnTint({ mode: 'color', c1: c.c1, c2: c.c2 })"
+              ></button>
+            </div>
+
+            <template v-if="currentTint.mode === 'hue'">
+              <label class="atz-tint-row">
+                <span class="atz-fx-label">{{ tr("Teinte", "Hue") }}</span>
+                <input
+                  type="range"
+                  min="-180"
+                  max="180"
+                  step="5"
+                  :value="currentTint.hue"
+                  @input="setOrnTint({ hue: Number(($event.target as HTMLInputElement).value) })"
+                />
+                <span class="atz-fx-val">{{ currentTint.hue }}°</span>
+              </label>
+              <label class="atz-tint-row">
+                <span class="atz-fx-label">{{ tr("Saturation", "Saturation") }}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  :value="currentTint.sat"
+                  @input="setOrnTint({ sat: Number(($event.target as HTMLInputElement).value) })"
+                />
+                <span class="atz-fx-val">{{ currentTint.sat }} %</span>
+              </label>
+              <label class="atz-tint-row">
+                <span class="atz-fx-label">{{ tr("Luminosité", "Brightness") }}</span>
+                <input
+                  type="range"
+                  min="40"
+                  max="160"
+                  step="5"
+                  :value="currentTint.light"
+                  @input="setOrnTint({ light: Number(($event.target as HTMLInputElement).value) })"
+                />
+                <span class="atz-fx-val">{{ currentTint.light }} %</span>
+              </label>
+            </template>
+
+            <div v-else-if="currentTint.mode === 'color'" class="atz-tint-colors">
+              <label>
+                <input
+                  type="color"
+                  :value="currentTint.c1"
+                  @input="setOrnTint({ c1: ($event.target as HTMLInputElement).value })"
+                />
+                <span>{{ tr("Principale", "Main") }}</span>
+              </label>
+              <label>
+                <input
+                  type="color"
+                  :value="currentTint.c2"
+                  @input="setOrnTint({ c2: ($event.target as HTMLInputElement).value })"
+                />
+                <span>{{ tr("Reflet", "Highlight") }}</span>
+              </label>
+            </div>
+            <p v-else class="atz-fx-hint">
+              {{ tr("Choisis une couleur dans la palette, ou Teinte pour décaler toutes les couleurs.", "Pick a color in the palette, or Hue to shift every color.") }}
+            </p>
+          </div>
+        </div>
+
+        <div class="atz-fx-label mt-3 mb-1">
+          {{ tr("Effet d'ambiance du style", "Style's ambient effect") }}
+        </div>
+        <p v-if="!ambientChoices.length" class="atz-fx-hint">
+          {{ tr("Choisis un style au-dessus pour avoir ses effets animés.", "Pick a style above to get its animated effects.") }}
+        </p>
+        <div v-else class="flex flex-wrap gap-2">
+          <button
+            v-for="a in ambientChoices"
+            :key="a.id"
+            type="button"
+            class="atz-preset"
+            :class="{ 'is-active': activeAmbients.includes(a.id) }"
+            :aria-pressed="activeAmbients.includes(a.id)"
+            @click="toggleAmbient(a.id)"
+          >
+            <i class="fas" :class="activeAmbients.includes(a.id) ? 'fa-check' : 'fa-plus'"></i>
+            {{ tr(a.fr, a.en) }}
+          </button>
+        </div>
+        <label v-if="ambientChoices.length" class="atz-fx-row mt-2">
+          <span class="atz-fx-label">{{ tr("Vitesse des effets", "Effect speed") }}</span>
+          <input
+            type="range"
+            min="25"
+            max="300"
+            step="5"
+            :value="skinFx.speed"
+            @input="setSkinFx({ speed: Number(($event.target as HTMLInputElement).value) })"
+          />
+          <span class="atz-fx-val">{{ (skinFx.speed / 100).toFixed(2).replace(".", ",") }}×</span>
+        </label>
+        <div v-if="ambientChoices.length" class="atz-fx-row">
+          <span class="atz-fx-label">{{ tr("Images par seconde des effets", "Effect frame rate") }}</span>
+          <div class="flex flex-wrap gap-1">
+            <button
+              v-for="f in FPS_CHOICES"
+              :key="f.v"
+              type="button"
+              class="atz-preset atz-preset--sm"
+              :class="{ 'is-active': skinFx.fps === f.v }"
+              @click="setSkinFx({ fps: f.v })"
+            >
+              {{ tr(f.fr, f.en) }}
+            </button>
+          </div>
+          <span></span>
+        </div>
+        <p v-if="ambientChoices.length" class="atz-fx-hint mb-1">
+          {{
+            tr(
+              "30 suffit pour des effets fluides et laisse plus de puissance à l'overlay et au jeu.",
+              "30 is enough for smooth effects and leaves more power to the overlay and the game.",
+            )
+          }}
+        </p>
+        <button
+          type="button"
+          class="btn mt-3"
+          @click="setSkinFx({ intensity: 100, opacity: 100, ornaments: {}, speed: 100, fps: 30, ambients: {}, ornTints: {}, styleTints: {} })"
+        >
+          {{ tr("Réinitialiser ces réglages", "Reset these settings") }}
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Overlay colors: applied immediately, remembered on this PC -->
@@ -559,6 +915,28 @@ import {
   type ThemeColors,
 } from "../atziri-theme";
 import {
+  SKINS,
+  activeSkin,
+  setSkin,
+  skinFx,
+  setSkinFx,
+  ORNAMENTS,
+  SKIN_AMBIENTS,
+  toggleAmbient,
+  styleOrnaments,
+  styleAmbients,
+  ornamentFor,
+  setOrnament,
+  TINT_PALETTE,
+  ornTintFor,
+  setOrnTint,
+  ornTintFilter,
+  STYLE_PALETTE,
+  styleTintFor,
+  setStyleTint,
+  stylePreview,
+} from "../atziri-skin";
+import {
   BUILTIN_BACKGROUNDS,
   backgrounds,
   backgroundUrl,
@@ -623,6 +1001,64 @@ async function loadDataStatus() {
   }
 }
 loadDataStatus();
+
+// ornaments and ambient effects offered for the current style ("custom" gets all of them)
+const ornamentChoices = computed(() => {
+  // skinFx is read so the list follows the settings
+  void skinFx.value;
+  return styleOrnaments(activeSkin.value)
+    .map((id) => ORNAMENTS.find((o) => o.id === id))
+    .filter((o): o is (typeof ORNAMENTS)[number] => !!o);
+});
+const currentOrnament = computed(() => {
+  void skinFx.value;
+  return ornamentFor(activeSkin.value);
+});
+// images per second of the ambient effects
+const FPS_CHOICES = [
+  { v: 30, fr: "30 (léger)", en: "30 (light)" },
+  { v: 60, fr: "60", en: "60" },
+  { v: 0, fr: "Max", en: "Max" },
+] as const;
+
+// color of the ornament (for each style)
+const TINT_MODES = [
+  { id: "none", fr: "Couleurs d'origine", en: "Original colors" },
+  { id: "hue", fr: "Teinte", en: "Hue" },
+  { id: "color", fr: "Couleur", en: "Color" },
+] as const;
+const currentTint = computed(() => {
+  void skinFx.value;
+  return ornTintFor(activeSkin.value);
+});
+const tintFilter = computed(() => ornTintFilter(currentTint.value));
+// color of the style (for each style that has its own colors)
+const currentStyleTint = computed(() => {
+  void skinFx.value;
+  return styleTintFor(activeSkin.value);
+});
+const activeSkinHasColors = computed(() => !!SKINS.find((s) => s.id === activeSkin.value)?.colors);
+const skinPreviews = computed(() => {
+  void skinFx.value;
+  return Object.fromEntries(SKINS.map((s) => [s.id, stylePreview(s)])) as Record<string, [string, string]>;
+});
+// corner of the picked ornament, for the preview (drawn ornaments show the accent color)
+const ornPreviewImg = computed(() => {
+  const id = currentOrnament.value;
+  if (id.startsWith("pack-")) return `/images/packs/${id.slice(5)}/coin-haut-gauche.svg`;
+  const m = /^orn-([a-z]+)-([a-z]+)$/.exec(id);
+  return m ? `/images/packs/${m[1]}/${m[2]}/coin-haut-gauche.svg` : "";
+});
+const ambientChoices = computed(() => {
+  const list = styleAmbients(activeSkin.value);
+  if (!SKINS.find((s) => s.id === activeSkin.value)?.custom) return list;
+  // custom: the name of the style before each effect
+  return list.map((a) => {
+    const owner = SKINS.find((s) => SKIN_AMBIENTS[s.id]?.some((x) => x.id === a.id));
+    return owner ? { ...a, fr: `${owner.fr} · ${a.fr}`, en: `${owner.en} · ${a.en}` } : a;
+  });
+});
+const activeAmbients = computed(() => (skinFx.value.ambients[activeSkin.value] ?? []).slice(-1));
 
 const currentLangData = computed(
   () => dataStatus.value?.langs[props.config.language],
@@ -1105,6 +1541,322 @@ async function doImport() {
   letter-spacing: 0.08em;
   color: theme("colors.gray.400");
   margin-bottom: 6px;
+}
+
+/* Visual style cards: a small framed preview of each style */
+.atz-skin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.atz-skin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid theme("colors.gray.700");
+  background: theme("colors.gray.800");
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+
+  &:hover {
+    border-color: theme("colors.blue.400");
+  }
+
+  &.is-active {
+    border-color: theme("colors.blue.400");
+    box-shadow: 0 0 10px rgb(var(--c-blue-400) / 0.35);
+  }
+}
+
+.atz-skin-preview {
+  position: relative;
+  display: block;
+  height: 64px;
+  border-radius: 8px;
+  background: var(--p-bg);
+  border: 1px solid #2a2a2a;
+  overflow: hidden;
+}
+
+.atz-skin-bar {
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  width: 38%;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--p-accent);
+}
+
+.atz-skin-line {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 30px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.atz-skin-line--short {
+  top: 42px;
+  right: 40%;
+}
+
+.atz-skin-preview--neon {
+  border: 2px solid var(--p-accent);
+  box-shadow:
+    0 0 8px var(--p-accent),
+    inset 0 0 12px color-mix(in srgb, var(--p-accent) 45%, transparent);
+
+  & .atz-skin-bar {
+    background: linear-gradient(90deg, var(--p-accent), #6a5cff);
+    box-shadow: 0 0 8px var(--p-accent);
+  }
+}
+
+.atz-skin-preview--darkred {
+  border: 2px solid var(--p-accent);
+  border-radius: 3px;
+  box-shadow:
+    0 0 8px color-mix(in srgb, var(--p-accent) 70%, transparent),
+    inset 0 0 16px #5a0a0e;
+
+  & .atz-skin-bar {
+    border-radius: 1px;
+    background: linear-gradient(90deg, var(--p-accent), #5a0a0e);
+  }
+}
+
+.atz-skin-preview--cyber {
+  border: 2px solid var(--p-accent);
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--p-accent) 14%, transparent) 0 1px, transparent 1px 10px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--p-accent) 14%, transparent) 0 1px, transparent 1px 10px),
+    var(--p-bg);
+  box-shadow: 0 0 8px var(--p-accent);
+
+  & .atz-skin-bar {
+    border-radius: 0;
+    box-shadow: 0 0 6px var(--p-accent);
+  }
+}
+
+.atz-skin-preview--minimal {
+  border: 1px solid #2f2f31;
+
+  & .atz-skin-bar {
+    opacity: 0.75;
+  }
+}
+
+.atz-skin-preview--nature {
+  border: 2px solid #6f8f2a;
+  border-radius: 10px;
+  background:
+    radial-gradient(60% 60% at 0% 0%, rgba(156, 204, 60, 0.35), transparent 70%),
+    radial-gradient(60% 60% at 100% 100%, rgba(92, 74, 36, 0.6), transparent 70%),
+    var(--p-bg);
+  box-shadow: inset 0 0 14px rgba(92, 74, 36, 0.6);
+}
+
+.atz-skin-preview--custom {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--p-bg), var(--p-bg)) padding-box,
+    conic-gradient(from 210deg, #c04dff, #19d3ff, #9ccc3c, #f5a524, #e3262f, #c04dff) border-box;
+}
+.atz-skin-preview--custom .atz-skin-bar {
+  background: linear-gradient(90deg, #c04dff, #19d3ff, #9ccc3c, #f5a524);
+}
+
+.atz-skin-preview--glass {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.03) 60%),
+    radial-gradient(80% 90% at 80% 20%, color-mix(in srgb, var(--p-accent) 45%, transparent), transparent 70%),
+    var(--p-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ornament list and its color, side by side */
+.atz-orn-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 18px;
+}
+
+.atz-style-col {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.atz-tint.atz-tint--style {
+  flex: 1 1 290px;
+}
+
+.atz-orn-col {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.atz-tint {
+  flex: 1 1 300px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid theme("colors.gray.700");
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.atz-tint-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.atz-tint-preview {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  background:
+    linear-gradient(135deg, rgb(var(--c-blue-400)) 0 40%, transparent 40%),
+    linear-gradient(315deg, rgb(var(--c-blue-400) / 0.55) 0 22%, transparent 22%),
+    #0d0d0d;
+  border: 1px solid theme("colors.gray.700");
+  overflow: hidden;
+
+  & img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.atz-tint-preview--img {
+  background: #0d0d0d;
+}
+
+.atz-preset.atz-preset--sm {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.atz-tint-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.atz-tint-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid theme("colors.gray.700");
+  cursor: pointer;
+  transition: transform 0.12s;
+
+  &:hover {
+    transform: scale(1.12);
+  }
+
+  &.is-active {
+    border-color: theme("colors.gray.100");
+    box-shadow: 0 0 0 2px theme("colors.blue.400");
+  }
+}
+
+.atz-tint-row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) 3.2rem;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+
+  & input[type="range"] {
+    accent-color: theme("colors.blue.400");
+  }
+}
+
+.atz-tint-colors {
+  display: flex;
+  gap: 16px;
+
+  & label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: theme("colors.gray.300");
+    cursor: pointer;
+  }
+
+  & input[type="color"] {
+    width: 34px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid theme("colors.gray.600");
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+  }
+}
+
+/* extra look settings under the style cards */
+.atz-fx {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid theme("colors.gray.700");
+}
+
+.atz-fx-row {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.atz-fx-row input[type="range"] {
+  accent-color: theme("colors.blue.400");
+}
+
+.atz-fx-label {
+  font-size: 13px;
+  color: theme("colors.gray.300");
+}
+
+.atz-fx-hint {
+  font-size: 12.5px;
+  color: theme("colors.gray.500");
+  margin: 0;
+}
+
+.atz-fx-val {
+  font-size: 12.5px;
+  text-align: right;
+  color: theme("colors.gray.400");
+  font-variant-numeric: tabular-nums;
+}
+
+.atz-skin-name {
+  font-size: 12.5px;
+  text-align: center;
+
+  & .fa-check {
+    color: theme("colors.blue.400");
+    margin-right: 2px;
+  }
 }
 
 .atz-preset {

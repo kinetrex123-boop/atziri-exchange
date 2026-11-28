@@ -8,6 +8,12 @@ export type BgSlot = "hub" | "price";
 export const BUILTIN_BACKGROUNDS: Array<{ id: string; label: string; url: string }> = [
   { id: "temple", label: "Temple d'Atziri", url: "/images/atziri-bg.jpg" },
   { id: "reine", label: "Reine Atziri", url: "/images/atziri-reine.jpg" },
+  { id: "pack-darkred", label: "Dark Red", url: "/images/packs/darkred/fond.jpg" },
+  { id: "pack-neon", label: "Neon Gaming", url: "/images/packs/neon/fond.jpg" },
+  { id: "pack-cyber", label: "Cyberpunk", url: "/images/packs/cyber/fond.jpg" },
+  { id: "pack-minimal", label: "Minimaliste", url: "/images/packs/minimal/fond.jpg" },
+  { id: "pack-nature", label: "Terre & Nature", url: "/images/packs/nature/fond.jpg" },
+  { id: "pack-glass", label: "Glassmorphism", url: "/images/packs/glass/fond.jpg" },
 ];
 
 const DEFAULTS: Record<BgSlot, string> = { hub: "temple", price: "temple" };
@@ -91,4 +97,11 @@ export function removeUpload(value: string) {
 
 export function initBackgrounds() {
   apply();
+  // other windows (settings, detached Shift + Space page, Ctrl + D) follow the change
+  window.addEventListener("storage", (e) => {
+    if (e.key === STORAGE_KEY) {
+      backgrounds.value = load();
+      apply();
+    }
+  });
 }

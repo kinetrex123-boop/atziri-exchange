@@ -54,6 +54,10 @@
         <div v-else class="w-8" />
       </AppTitleBar>
       <div class="grow layout-column min-h-0 atziri-bg">
+        <!-- Atziri: ambient effect of the style, behind the content -->
+        <div class="atz-ambient atz-ambient--1"><i v-for="k in 12" :key="k"></i></div>
+        <div class="atz-ambient atz-ambient--2"><i v-for="k in 12" :key="k"></i></div>
+        <div class="atz-ambient atz-ambient--3"><i v-for="k in 12" :key="k"></i></div>
         <background-info />
         <check-position-circle
           v-if="showCheckPos"

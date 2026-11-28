@@ -1,6 +1,11 @@
 <template>
   <!-- Atziri Exchange: Ctrl + B result, item vs the gear of the PoB build -->
   <div v-if="state" class="pc-panel" @click.stop>
+    <!-- Atziri: ambient effect of the style, behind the content -->
+    <div class="atz-ambient atz-ambient--1"><i v-for="k in 12" :key="k"></i></div>
+    <div class="atz-ambient atz-ambient--2"><i v-for="k in 12" :key="k"></i></div>
+    <div class="atz-ambient atz-ambient--3"><i v-for="k in 12" :key="k"></i></div>
+    <div class="pc-scroll">
     <div class="pc-head">
       <span class="pc-title">{{ state.itemName || tr("Objet", "Item") }}</span>
       <button type="button" class="pc-x" :title="tr('Fermer (Échap)', 'Close (Esc)')" @click="close">
@@ -33,57 +38,57 @@
         </button>
       </div>
       <div class="pc-muted pc-pad pc-replace">
-        {{ tr("Remplace :", "Replaces:") }}
+        {{ tr("Remplace l'objet équipé :", "Replaces the equipped item:") }}
         <b>{{ slot?.current ? slot.current.split(",")[0] : tr("(emplacement vide)", "(empty slot)") }}</b>
         <span v-if="slot"> ({{ slotLabel(slot.slot, isFr) }})</span>
       </div>
 
-      <div v-if="damageRows.length" class="pc-grp">{{ tr("Dégâts", "Damage") }}</div>
+      <div v-if="damageRows.length" class="pc-grp pc-grp-cols"><span class="pc-grp-t">{{ tr("Dégâts", "Damage") }}</span><span class="pc-colh">{{ tr("Équipé", "Equipped") }}</span><span></span><span class="pc-colh pc-colh-new">{{ tr("Cet objet", "This item") }}</span><span class="pc-colh">{{ tr("Écart", "Change") }}</span></div>
       <div v-for="r in damageRows" :key="r.label" class="pc-row">
         <span>{{ r.label }}</span>
-        <span class="pc-num">{{ fmtNum(r.before, isFr) }}</span>
+        <span class="pc-num pc-eqv">{{ fmtNum(r.before, isFr) }}</span>
         <span class="pc-muted">→</span>
-        <span class="pc-num">{{ fmtNum(r.after, isFr) }}</span>
+        <span class="pc-num pc-newv">{{ fmtNum(r.after, isFr) }}</span>
         <span class="pc-num" :class="cls(r.after - r.before)">{{ pct(r.before, r.after) }}</span>
       </div>
 
       <template v-if="offence.rows.length">
-        <div class="pc-grp">{{ tr("Meilleure compétence", "Best skill") }} · {{ offence.label }}</div>
+        <div class="pc-grp pc-grp-cols"><span class="pc-grp-t">{{ tr("Meilleure compétence", "Best skill") }} · {{ offence.label }}</span><span class="pc-colh">{{ tr("Équipé", "Equipped") }}</span><span></span><span class="pc-colh pc-colh-new">{{ tr("Cet objet", "This item") }}</span><span class="pc-colh">{{ tr("Écart", "Change") }}</span></div>
         <div v-for="o in offence.rows" :key="o.key" class="pc-row">
           <span>{{ tr(o.fr, o.en) }}</span>
-          <span class="pc-num">{{ fmtStat(o.before, o) }}</span>
+          <span class="pc-num pc-eqv">{{ fmtStat(o.before, o) }}</span>
           <span class="pc-muted">→</span>
-          <span class="pc-num">{{ fmtStat(o.after, o) }}</span>
+          <span class="pc-num pc-newv">{{ fmtStat(o.after, o) }}</span>
           <span class="pc-num" :class="cls(o.after - o.before)">{{ signedStat(o.after - o.before, o) }}</span>
         </div>
       </template>
 
-      <div class="pc-grp">{{ tr("Défense", "Defence") }}</div>
+      <div class="pc-grp pc-grp-cols"><span class="pc-grp-t">{{ tr("Défense", "Defence") }}</span><span class="pc-colh">{{ tr("Équipé", "Equipped") }}</span><span></span><span class="pc-colh pc-colh-new">{{ tr("Cet objet", "This item") }}</span><span class="pc-colh">{{ tr("Écart", "Change") }}</span></div>
       <template v-for="d in DEF" :key="d.key">
         <div v-if="shown(d.key)" class="pc-row">
           <span>{{ tr(d.fr, d.en) }}</span>
-          <span class="pc-num">{{ fmtNum(slot!.before[d.key], isFr) }}{{ d.unit }}</span>
+          <span class="pc-num pc-eqv">{{ fmtNum(slot!.before[d.key], isFr) }}{{ d.unit }}</span>
           <span class="pc-muted">→</span>
-          <span class="pc-num">{{ fmtNum(slot!.after[d.key], isFr) }}{{ d.unit }}</span>
+          <span class="pc-num pc-newv">{{ fmtNum(slot!.after[d.key], isFr) }}{{ d.unit }}</span>
           <span class="pc-num" :class="cls(diff(d.key))">{{ signed(diff(d.key)) }}</span>
         </div>
       </template>
 
-      <!-- mod lines, this item vs the equipped one, the same kind of mod on one row -->
+      <!-- mod lines, the equipped item (left) vs this item (right), the same kind of mod on one row -->
       <template v-if="modRows.length">
         <div class="pc-grp">{{ tr("Mods", "Mods") }}</div>
         <div class="pc-mods">
-          <div class="pc-cap">{{ tr("Cet objet", "This item") }}</div>
           <div class="pc-cap">{{ tr("Équipé", "Equipped") }}</div>
+          <div class="pc-cap pc-colh-new">{{ tr("Cet objet", "This item") }}</div>
           <template v-for="(m, i) in modRows" :key="i">
             <div v-if="m.sep" class="pc-mod-sep">{{ m.sep }}</div>
-            <div class="pc-mod" :class="m.newCls">
-              <div v-for="(l, k) in m.newLines" :key="k">{{ l }}</div>
-              <span v-if="!m.newLines.length" class="pc-muted">—</span>
-            </div>
             <div class="pc-mod" :class="m.curCls">
               <div v-for="(l, k) in m.curLines" :key="k">{{ l }}</div>
               <span v-if="!m.curLines.length" class="pc-muted">—</span>
+            </div>
+            <div class="pc-mod" :class="m.newCls">
+              <div v-for="(l, k) in m.newLines" :key="k">{{ l }}</div>
+              <span v-if="!m.newLines.length" class="pc-muted">—</span>
             </div>
           </template>
         </div>
@@ -98,6 +103,7 @@
         {{ state.unknown.join(" · ") }}
       </div>
     </template>
+    </div>
   </div>
 </template>
 
@@ -361,7 +367,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   z-index: 60;
   width: 34rem;
   max-height: 84vh;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
   border: 1px solid theme("colors.blue.400");
   border-radius: 8px;
   background: rgb(var(--c-gray-900) / 0.97);
@@ -370,6 +377,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   font-size: 0.85rem;
   font-family: "IBM Plex Sans", system-ui, "Segoe UI", sans-serif;
   font-variant: normal;
+}
+/* the content scrolls inside: the ambient effect and the ornaments stay on the panel */
+.pc-scroll {
+  min-height: 0;
+  overflow: auto;
+  border-radius: inherit;
 }
 .pc-head {
   display: flex;
@@ -434,6 +447,34 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
+}
+/* group bar with the column titles: equipped | this item | change */
+.pc-grp-cols {
+  display: grid;
+  grid-template-columns: 1fr 5.5rem 1rem 5.5rem 4.5rem;
+  gap: 4px;
+  align-items: center;
+}
+.pc-grp-t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-colh {
+  text-align: right;
+  font-size: 0.62rem;
+  color: theme("colors.gray.400");
+}
+.pc-colh-new {
+  color: theme("colors.gray.100");
+  font-weight: 600;
+}
+.pc-eqv {
+  color: theme("colors.gray.400");
+}
+.pc-newv {
+  color: theme("colors.gray.100");
+  font-weight: 600;
 }
 .pc-row {
   display: grid;

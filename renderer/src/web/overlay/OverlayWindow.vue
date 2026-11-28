@@ -15,7 +15,13 @@
       @click="handleBackgroundClick"
     >
       <!-- Atziri theme: framed artwork panel instead of a full-screen tint -->
-      <div v-if="atziriFrame" class="atziri-frame"></div>
+      <div v-if="atziriFrame" class="atziri-frame">
+        <!-- Atziri: frame ornament and ambient effects (3 per style) picked in Atziri réglage -->
+        <div class="atz-ambient atz-ambient--1"><i v-for="k in 12" :key="k"></i></div>
+        <div class="atz-ambient atz-ambient--2"><i v-for="k in 12" :key="k"></i></div>
+        <div class="atz-ambient atz-ambient--3"><i v-for="k in 12" :key="k"></i></div>
+        <div class="atz-orn"></div>
+      </div>
     </div>
     <!-- v-show keeps the hub (and its web pages) alive between openings -->
     <MarketPrices

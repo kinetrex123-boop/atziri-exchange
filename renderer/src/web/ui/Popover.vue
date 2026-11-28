@@ -49,6 +49,11 @@ export default defineComponent({
       type: String,
       default: "span",
     },
+    // Atziri Exchange: "" = tippy's default dark theme
+    theme: {
+      type: String,
+      default: "light",
+    },
   },
   setup(props) {
     const target = ref<HTMLElement>(null!);
@@ -59,7 +64,7 @@ export default defineComponent({
       instance = tippy(target.value, {
         content: content.value,
         interactive: true,
-        theme: "light",
+        theme: props.theme,
         trigger: props.trigger,
         placement: props.placement,
         arrow: props.arrow,

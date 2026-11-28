@@ -6,10 +6,12 @@ import { initConfig, AppConfig, atziriMigrations } from "./web/Config";
 import { Host } from "./web/background/IPC";
 import { initTheme } from "./web/atziri-theme";
 import { initBackgrounds } from "./web/atziri-backgrounds";
+import { initSkin } from "./web/atziri-skin";
 // Atziri Exchange: overlay colors and background images (user-editable)
 // before anything renders
 initTheme();
 initBackgrounds();
+initSkin();
 (async function () {
   await initConfig();
   const i18nPlugin = await I18n.init(AppConfig().language);
