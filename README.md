@@ -12,7 +12,7 @@ Outil de fan gratuit, non affilié à Grinding Gear Games. Les images d'Atziri a
 
 ### Prix d'un objet (Ctrl + D)
 - La recherche part tout de suite, en achat instantané, avec un prix en Exalté ou en Divin.
-- Un gros prix en haut, avec un indicateur de fiabilité (nombre d'annonces, écart entre les prix) et un prix conseillé « À vendre ≈ X ».
+- Un gros prix en haut (médiane des annonces les moins chères), avec un indicateur de fiabilité (annonces gardées, nombre de vendeurs, écart entre les prix), l'annonce la moins chère et un prix « À vendre ≈ X ».
 - Les annonces anormalement basses sont ignorées.
 - Les mods sont cliquables en entier, rangés en groupes repliables, avec une case « Valeur exacte ». La recherche se relance toute seule.
 - La langue du jeu est détectée toute seule.
@@ -33,7 +33,7 @@ Un grand cadre redimensionnable. Ses onglets se rangent dans l'ordre que tu veux
   - Le chrono automatique démarre à l'entrée d'une map et s'arrête au retour au repaire.
   - **Ctrl + T** ajoute l'objet survolé aux loots de la map.
 - **Stats** : ton build calculé par Path of Building, comme sur poe.ninja (attributs, défenses, résistances, PV effectifs, coups max, récupération, compétences dépliables avec leurs gemmes).
-  - Tu peux suivre ton personnage poe.ninja, relu toutes les 5 min, avec un bouton ↻ pour l'actualiser (option toutes les 15 min). Tu peux aussi suivre un build PoB sauvegardé.
+  - Tu peux suivre ton personnage poe.ninja, relu toutes les 5 min pendant que le jeu est ouvert, avec un bouton ↻ qui ouvre ton perso sur poe.ninja pour que tu cliques « Refresh character ». Tu peux aussi suivre un build PoB sauvegardé.
 - **Historique** : tes derniers Ctrl + D et le suivi de rentabilité.
 - **Détacher** : la page s'ouvre dans sa propre fenêtre, par exemple sur un 2e écran.
 
