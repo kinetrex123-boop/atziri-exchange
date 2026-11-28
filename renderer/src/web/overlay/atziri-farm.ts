@@ -61,15 +61,50 @@ export function newSession(title: string, count = 5): FarmSession {
   };
 }
 
-function load(): FarmState {
+// While a map timer runs, the overlay notes every minute that it is still
+// alive. A timer found running at launch (game or PC closed inside a map) is
+// closed at the last sign of life, not counted until now (audit F1).
+const ALIVE_KEY = "atziri-farm-alive";
+const ALIVE_EVERY_MS = 60 * 1000;
+
+/** Closes the timers left running, at `until` (never before they started) */
+export function closeStaleTimers(state: FarmState, until: number) {
+  let changed = false;
+  for (const sess of state.sessions) {
+    for (const m of sess.maps) {
+      if (m.enteredAt == null) continue;
+      m.timeMs += Math.max(0, until - m.enteredAt);
+      m.enteredAt = null;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+function lastAlive() {
+  const v = Number(localStorage.getItem(ALIVE_KEY));
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+function load(atLaunch = false): FarmState {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
     if (s && Array.isArray(s.sessions) && s.sessions.length) {
-      return {
+      const state: FarmState = {
         sessions: s.sessions,
         currentId: s.currentId ?? s.sessions[0].id,
         autoTimer: s.autoTimer !== false,
       };
+      // the time since the last sign of life (plus one minute at most) was
+      // spent with the app or the PC closed: not inside the map
+      if (atLaunch && closeStaleTimers(state, lastAlive() + ALIVE_EVERY_MS)) {
+        try {
+          localStorage.setItem(KEY, JSON.stringify(state));
+        } catch {
+          // storage unavailable
+        }
+      }
+      return state;
     }
   } catch {
     // unreadable storage
@@ -78,7 +113,22 @@ function load(): FarmState {
   return { sessions: [first], currentId: first.id, autoTimer: true };
 }
 
-export const farm = shallowRef<FarmState>(load());
+// only the main overlay window closes the timers left open (the detached
+// window opening later must not stop a map that is really running)
+// (no window in the tests)
+const isMainWindow =
+  typeof window !== "undefined" &&
+  !new URLSearchParams(window.location.search).has("atziri");
+export const farm = shallowRef<FarmState>(load(isMainWindow));
+
+setInterval(() => {
+  if (!farm.value.sessions.some((sess) => timerRunning(sess))) return;
+  try {
+    localStorage.setItem(ALIVE_KEY, String(Date.now()));
+  } catch {
+    // storage unavailable
+  }
+}, ALIVE_EVERY_MS);
 
 function save() {
   try {
@@ -89,9 +139,11 @@ function save() {
 }
 
 // the other window (overlay / detached window) changed the data
-window.addEventListener("storage", (e) => {
-  if (e.key === KEY) farm.value = load();
-});
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === KEY) farm.value = load();
+  });
+}
 
 /** Applies a change to the state, then saves it */
 export function update(fn: (s: FarmState) => void) {
@@ -147,15 +199,40 @@ export function totals(sess: FarmSession, now: number) {
   // session time = time spent inside the maps only
   const elapsed = sess.maps.reduce((a, m) => a + mapTime(m, now), 0);
   const hours = elapsed / 3600000;
+  // the investment is spread over all the maps of the session (the lines
+  // planned), not only over the ones already filled (audit F5)
+  const planned = Math.max(sess.maps.length, done.length);
+  const investedPerMap = planned ? sess.invested / planned : null;
   return {
     done: done.length,
     gained,
     profit,
     elapsed,
-    perHour: hours > 1 / 60 ? gained / hours : null,
-    investedPerMap: done.length ? sess.invested / done.length : null,
-    profitPerMap: done.length ? profit / done.length : null,
+    // net: the investment of the maps played is taken off (time in maps only,
+    // the time in the hideout is not counted)
+    perHour:
+      hours > 1 / 60
+        ? (gained - (investedPerMap ?? 0) * done.length) / hours
+        : null,
+    investedPerMap,
+    profitPerMap:
+      done.length && investedPerMap != null
+        ? gained / done.length - investedPerMap
+        : null,
   };
+}
+
+/** Time of a map typed by hand (minutes), the map timer is stopped */
+export function setMapTime(id: number, minutes: number | null) {
+  update((s) => {
+    const m = cur(s).maps.find((x) => x.id === id);
+    if (!m) return;
+    m.enteredAt = null;
+    m.timeMs =
+      minutes != null && Number.isFinite(minutes) && minutes >= 0
+        ? Math.round(minutes * 60000)
+        : 0;
+  });
 }
 
 export function mapTime(m: FarmMap, now: number) {

@@ -138,10 +138,16 @@
         <div class="fm-kpi">
           <span class="fm-cap">{{ tr("Temps en map", "Time in maps") }}</span>
           <b :title="tr('Total du temps passé dans les maps de la session', 'Total time spent inside the maps of the session')">{{ clock(t.elapsed) }}</b>
+          <span
+            v-if="t.perHour != null"
+            class="fm-muted"
+            :title="tr('Profit net par heure passée dans les maps (investissement des maps jouées déduit, temps au repaire non compté)', 'Net profit per hour spent inside maps (investment of the maps played taken off, hideout time not counted)')"
+            >{{ signed(t.perHour) }} {{ tr("div/h net", "div/h net") }}</span
+          >
         </div>
         <div class="fm-kpi">
           <span class="fm-cap">{{ tr("Investi / map", "Invested / map") }}</span>
-          <b>{{ t.investedPerMap == null ? "—" : num(t.investedPerMap) }}</b>
+          <b :title="tr('Divines investies réparties sur toutes les maps de la session', 'Divines invested spread over all the maps of the session')">{{ t.investedPerMap == null ? "—" : num(t.investedPerMap) }}</b>
         </div>
         <div class="fm-kpi">
           <span class="fm-cap">{{ tr("Profit moyen / map", "Avg profit / map") }}</span>
@@ -184,15 +190,35 @@
             <span class="fm-name">
               <input
                 class="fm-cell"
-                :value="m.name"
+                :value="shown(`name-${m.id}`, m.name)"
                 :placeholder="m.id === waitingId ? tr('en attente', 'waiting') : ''"
+                @focus="startEdit(`name-${m.id}`, $event)"
+                @input="draft = ($event.target as HTMLInputElement).value"
                 @change="setMapName(m.id, ($event.target as HTMLInputElement).value)"
+                @blur="endEdit"
               />
               <span v-if="m.enteredAt" class="fm-tag">{{ tr("en cours", "running") }}</span>
             </span>
-            <span class="fm-mono" :class="{ 'fm-acc': m.enteredAt }">{{
-              mapTime(m, now) ? clock(mapTime(m, now)) : ""
-            }}</span>
+            <!-- Atziri Exchange: time of a map, can be corrected by hand (minutes) -->
+            <input
+              v-if="editingTime === m.id"
+              class="ar-search fm-num fm-time-edit"
+              inputmode="decimal"
+              :value="Math.round(mapTime(m, now) / 600) / 100"
+              :title="tr('Minutes (Entrée pour valider)', 'Minutes (Enter to confirm)')"
+              @change="onTime(m.id, ($event.target as HTMLInputElement).value)"
+              @blur="editingTime = null"
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
+              @keydown.esc="editingTime = null"
+            />
+            <span
+              v-else
+              class="fm-mono fm-time"
+              :class="{ 'fm-acc': m.enteredAt }"
+              :title="tr('Clic pour corriger le temps de cette map', 'Click to correct the time of this map')"
+              @click="editingTime = m.id"
+              >{{ mapTime(m, now) ? clock(mapTime(m, now)) : "—" }}</span
+            >
             <span>
               <input
                 type="text"
@@ -210,8 +236,11 @@
               <textarea
                 v-if="openLoots === m.id"
                 class="ar-search fm-loot-edit"
-                :value="m.loots.join('\n')"
+                :value="shown(`loots-${m.id}`, m.loots.join('\n'))"
                 rows="5"
+                @focus="startEdit(`loots-${m.id}`, $event)"
+                @input="draft = ($event.target as HTMLTextAreaElement).value"
+                @blur="endEdit"
                 @change="setMapLoots(m.id, ($event.target as HTMLTextAreaElement).value)"
                 @keydown.esc="openLoots = null"
               ></textarea>
@@ -289,6 +318,7 @@ import {
   setMapName,
   setMapDivines,
   setMapLoots,
+  setMapTime,
   toggleTimer,
   resetTimer,
   nextRun,
@@ -396,6 +426,14 @@ function endEdit() {
   editing.value = null;
 }
 
+// map whose time is being corrected by hand
+const editingTime = shallowRef<number | null>(null);
+function onTime(id: number, raw: string) {
+  const v = parseNum(raw);
+  if (v != null && v >= 0) setMapTime(id, v);
+  editingTime.value = null;
+}
+
 function onDivines(id: number, raw: string) {
   setMapDivines(id, parseNum(raw));
 }
@@ -439,6 +477,12 @@ async function confirmDelete() {
 </script>
 
 <style lang="postcss">
+.fm-time {
+  cursor: pointer;
+}
+.fm-time-edit {
+  width: 4.5rem;
+}
 .fm {
   overflow: auto;
 }
