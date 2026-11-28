@@ -1,4 +1,5 @@
 import path from "path";
+import { isPublicWebUrl } from "../atziri-web-guard";
 import { BrowserWindow, dialog, shell, Menu } from "electron";
 import {
   OverlayController,
@@ -90,7 +91,7 @@ export class OverlayWindow {
         webPreferences.nodeIntegrationInSubFrames = false;
         webPreferences.contextIsolation = true;
         webPreferences.sandbox = true;
-        if (params.src && !isWebUrl(params.src)) event.preventDefault();
+        if (params.src && !isPublicWebUrl(params.src)) event.preventDefault();
       },
     );
     this.window.webContents.on(
@@ -99,12 +100,16 @@ export class OverlayWindow {
         webviewWebContents.on("before-input-event", this.handleExtraCommands);
         // links opening a new window stay in the same tab
         webviewWebContents.setWindowOpenHandler((details) => {
-          if (isWebUrl(details.url)) webviewWebContents.loadURL(details.url);
+          if (isPublicWebUrl(details.url)) webviewWebContents.loadURL(details.url);
           return { action: "deny" };
         });
         // only http(s) pages, no file:// or custom protocols
         webviewWebContents.on("will-navigate", (e, url) => {
-          if (!isWebUrl(url)) e.preventDefault();
+          if (!isPublicWebUrl(url)) e.preventDefault();
+        });
+        // a redirect to this PC is stopped as well (audit H7)
+        webviewWebContents.on("will-redirect", (e, url) => {
+          if (!isPublicWebUrl(url)) e.preventDefault();
         });
       },
     );

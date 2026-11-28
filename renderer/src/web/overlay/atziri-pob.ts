@@ -122,9 +122,13 @@ export async function pobSelectNinja(url: string) {
   );
 }
 
-/** asks poe.ninja to fetch the character again (needs the poe.ninja login) */
+/**
+ * reads the character from poe.ninja again ("ok": a newer version was found,
+ * "same": not refreshed on poe.ninja yet). Atziri never asks poe.ninja to
+ * refresh it: the player clicks "Refresh character" on poe.ninja (audit B5).
+ */
 export async function pobNinjaRefresh() {
-  return await json<PobStatus & { refresh: "ok" | "login" | "cooldown" | "error" }>(
+  return await json<PobStatus & { refresh: "ok" | "same" | "error" }>(
     await fetch("/atziri-pob/ninja-refresh", { method: "POST" }),
   );
 }

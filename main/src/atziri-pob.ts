@@ -8,8 +8,7 @@
 //
 // Routes: GET /atziri-pob/status, POST /atziri-pob/select?file=,
 //         GET /atziri-pob/stats, POST /atziri-pob/compare (body: item text)
-import { app, shell, session } from "electron";
-import { BROWSER_PARTITION } from "./adblock";
+import { app, shell } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -103,42 +102,36 @@ async function ninjaVersion(c: NinjaChar): Promise<number> {
 }
 
 /**
- * Same as poe.ninja's "Refresh character" button: poe.ninja fetches the
- * character again from GGG. It needs the player's poe.ninja login, so it
- * uses the session of the overlay's poe.ninja tab (where the player logs in).
+ * Reads the character again from poe.ninja, after the player clicked
+ * poe.ninja's own "Refresh character" button in the poe.ninja tab.
+ * Atziri no longer sends that request itself with the player's poe.ninja
+ * login and hand-written headers, nor on a timer (audit B5).
  */
-async function ninjaRefreshCharacter(
-  logger: Logger,
-): Promise<"ok" | "login" | "cooldown" | "error"> {
+async function ninjaReread(logger: Logger): Promise<"ok" | "same" | "error"> {
   const s = loadSettings();
   if (s.file !== "ninja" || !s.ninja) return "error";
-  const c = s.ninja;
-  const ses = session.fromPartition(BROWSER_PARTITION);
-  const res = await ses.fetch(
-    `https://poe.ninja/poe2/api/account/refresh-character/${encodeURIComponent(c.league)}/${encodeURIComponent(c.character)}`,
-    {
-      method: "POST",
-      headers: { Origin: "https://poe.ninja", Referer: `https://poe.ninja/poe2/profile/${encodeURIComponent(c.account)}/${encodeURIComponent(c.league)}/character/${encodeURIComponent(c.character)}` },
-    },
-  );
-  logger.write(`info [Atziri PoB] poe.ninja refresh: ${res.status}`);
-  if (res.status === 401 || res.status === 403) return "login";
-  if (res.status === 429) return "cooldown";
-  if (!res.ok) return "error";
-  // poe.ninja takes a few seconds to fetch it: read it again a bit later
-  for (const wait of [4000, 8000, 15000]) {
-    await new Promise((resolve) => setTimeout(resolve, wait));
-    const before = ninjaState.version;
-    await refreshNinja(logger, true);
-    if (ninjaState.version !== before) break;
-  }
-  return "ok";
+  const before = ninjaState.version;
+  await refreshNinja(logger, true);
+  if (ninjaState.error) return "error";
+  return ninjaState.version !== before ? "ok" : "same";
+}
+
+// Reads of the character page run only while the game is open, and slow
+// down after errors (5, 10, 20... up to 60 minutes)
+let gameRunning = true;
+let ninjaErrors = 0;
+/** Called by main.ts when the game window opens or closes */
+export function setPobGameRunning(on: boolean) {
+  gameRunning = on;
+}
+function nextNinjaDelay() {
+  return Math.min(60 * 60 * 1000, NINJA_EVERY_MS * 2 ** Math.min(ninjaErrors, 4));
 }
 
 async function refreshNinja(logger: Logger, force = false) {
   const s = loadSettings();
   if (s.file !== "ninja" || !s.ninja) return;
-  if (!force && Date.now() - ninjaState.checkedAt < NINJA_EVERY_MS && fs.existsSync(NINJA_FILE())) return;
+  if (!force && Date.now() - ninjaState.checkedAt < nextNinjaDelay() && fs.existsSync(NINJA_FILE())) return;
   if (ninjaRunning) { await ninjaRunning; return; }
   const c = s.ninja;
   ninjaRunning = (async () => {
@@ -165,9 +158,11 @@ async function refreshNinja(logger: Logger, force = false) {
       }
       ninjaState.checkedAt = Date.now();
       ninjaState.error = undefined;
+      ninjaErrors = 0;
     } catch (e) {
       ninjaState.checkedAt = Date.now();
       ninjaState.error = (e as Error).message;
+      ninjaErrors++;
       logger.write(`warn [Atziri PoB] ${ninjaState.error}`);
     } finally {
       ninjaRunning = null;
@@ -343,7 +338,7 @@ function status() {
     ninjaUpdatedUtc: ninjaState.updatedUtc ?? null,
     ninjaCheckedAt: ninjaState.checkedAt || null,
     ninjaError: ninjaState.error ?? null,
-    ninjaAuto: Boolean(s.ninjaAuto),
+    ninjaAuto: false, // removed (audit B5)
   };
 }
 
@@ -404,11 +399,11 @@ export function setupAtziriPob(server: Server, logger: Logger) {
       if (ok) saveSettings({ ...prev, file });
       sendJson(res, ok ? 200 : 400, status());
     } else if (url.startsWith("/atziri-pob/ninja-auto") && req.method === "POST") {
-      const on = !url.includes("on=0");
-      saveSettings({ ...loadSettings(), ninjaAuto: on });
+      // automatic "Refresh character" removed (audit B5): always off
+      saveSettings({ ...loadSettings(), ninjaAuto: false });
       sendJson(res, 200, status());
     } else if (url.startsWith("/atziri-pob/ninja-refresh") && req.method === "POST") {
-      ninjaRefreshCharacter(logger)
+      ninjaReread(logger)
         .then((r) => { sendJson(res, 200, { ...status(), refresh: r }); })
         .catch(fail);
     } else if (url.startsWith("/atziri-pob/open") && req.method === "POST") {
@@ -436,14 +431,12 @@ export function setupAtziriPob(server: Server, logger: Logger) {
     }
   });
   app.on("will-quit", stop);
-  // keep the poe.ninja character fresh (only when that source is chosen)
+  // keep the poe.ninja character fresh (only when that source is chosen, and
+  // only while the game is open; slower after errors)
   setInterval(() => {
+    if (!gameRunning) return;
     refreshNinja(logger).catch(() => undefined);
   }, NINJA_EVERY_MS);
-  // optional: ask poe.ninja to fetch the character again every 15 minutes
-  setInterval(() => {
-    if (loadSettings().ninjaAuto) ninjaRefreshCharacter(logger).catch(() => undefined);
-  }, 15 * 60 * 1000);
 
 
 }

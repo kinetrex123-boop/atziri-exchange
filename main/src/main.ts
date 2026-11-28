@@ -17,10 +17,11 @@ import { HttpProxy } from "./proxy";
 import { installExtension, VUEJS_DEVTOOLS } from "electron-devtools-installer";
 import { FileWriter } from "./host-files/FileWriter";
 import { enableBrowserAdblock } from "./adblock";
+import { lockDownBrowserSession } from "./atziri-web-guard";
 import { setupAtziriData } from "./atziri-data";
 import { setupAtziriAutostart, isAutostartEnabled } from "./atziri-autostart";
 import { setupAtziriDetach } from "./atziri-detached";
-import { setupAtziriPob } from "./atziri-pob";
+import { setupAtziriPob, setPobGameRunning } from "./atziri-pob";
 import { setupAtziriBrand } from "./atziri-brand";
 import { setupAtziriCraft } from "./atziri-craft";
 
@@ -97,6 +98,9 @@ app.on("browser-window-created", (_e, win) => {
     const poeWindow = new GameWindow();
     // Atziri Exchange: the overlay closes itself when the game is closed
     // (unless "start with the game" is on: it then waits for the next game)
+    // Atziri Exchange: poe.ninja character reads only while the game is open
+    poeWindow.onAttach(() => setPobGameRunning(true));
+    poeWindow.onGameClosed(() => setPobGameRunning(false), 5000);
     poeWindow.onGameClosed(() => {
       if (isAutostartEnabled()) return;
       logger.write("info [Atziri] game closed, quitting the overlay.");
@@ -109,6 +113,8 @@ app.on("browser-window-created", (_e, win) => {
     const gameLogWatcher = new GameLogWatcher(eventPipe, logger, fileWriter);
     // Atziri Exchange: block ads in the Shift + Space browser tab
     enableBrowserAdblock(logger);
+    // Atziri Exchange: web tabs get no permission (micro, camera...) (audit H3)
+    lockDownBrowserSession();
 
     if (process.env.VITE_DEV_SERVER_URL) {
       try {

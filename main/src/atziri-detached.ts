@@ -5,6 +5,7 @@
 // size are remembered. Pressing Shift + Space in game puts it back into the
 // overlay (the overlay calls /atziri-hub/attach when it opens).
 import path from "path";
+import { isPublicWebUrl } from "./atziri-web-guard";
 import fs from "fs";
 import { app, BrowserWindow, screen, shell } from "electron";
 import type { Server, IncomingMessage, ServerResponse } from "http";
@@ -83,15 +84,19 @@ function openWindow(port: number) {
     webPreferences.nodeIntegrationInSubFrames = false;
     webPreferences.contextIsolation = true;
     webPreferences.sandbox = true;
-    if (params.src && !isWebUrl(params.src)) event.preventDefault();
+    if (params.src && !isPublicWebUrl(params.src)) event.preventDefault();
   });
   wc.on("did-attach-webview", (_, webviewWc) => {
     webviewWc.setWindowOpenHandler((details) => {
-      if (isWebUrl(details.url)) webviewWc.loadURL(details.url);
+      if (isPublicWebUrl(details.url)) webviewWc.loadURL(details.url);
       return { action: "deny" };
     });
     webviewWc.on("will-navigate", (e, url) => {
-      if (!isWebUrl(url)) e.preventDefault();
+      if (!isPublicWebUrl(url)) e.preventDefault();
+    });
+    // a redirect to this PC is stopped as well (audit H7)
+    webviewWc.on("will-redirect", (e, url) => {
+      if (!isPublicWebUrl(url)) e.preventDefault();
     });
   });
   wc.setWindowOpenHandler((details) => {

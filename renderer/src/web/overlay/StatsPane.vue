@@ -48,7 +48,7 @@
           type="button"
           class="st-icon-btn"
           :disabled="refreshing"
-          :title="status?.selected === 'ninja' ? tr('Actualiser mon perso sur poe.ninja', 'Refresh my character on poe.ninja') : tr('Recalculer', 'Recompute')"
+          :title="status?.selected === 'ninja' ? tr('Ouvrir mon perso sur poe.ninja pour l\'actualiser', 'Open my character on poe.ninja to refresh it') : tr('Recalculer', 'Recompute')"
           @click="refreshAll"
         >
           <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing || loading }"></i>
@@ -78,15 +78,8 @@
       </div>
       <!-- ask poe.ninja to fetch the character again (its "Refresh character") -->
       <div v-if="status?.selected === 'ninja' && status.ninja" class="st-ninja st-small">
-        <span v-if="refreshing" class="st-muted">{{ tr("poe.ninja relit ton perso…", "poe.ninja is fetching your character…") }}</span>
-        <label class="st-muted st-check">
-          <input type="checkbox" :checked="status.ninjaAuto" @change="setAuto(($event.target as HTMLInputElement).checked)" />
-          {{ tr("Automatiquement toutes les 15 min", "Automatically every 15 min") }}
-        </label>
-        <span v-if="refreshMsg" :class="refreshOk ? 'st-ok' : 'st-err'">{{ refreshMsg }}</span>
-        <button v-if="needLogin" type="button" class="st-btn" @click="openNinjaLogin">
-          {{ tr("Ouvrir poe.ninja pour me connecter", "Open poe.ninja to log in") }}
-        </button>
+        <span v-if="refreshing" class="st-muted"><i class="fas fa-spinner fa-spin"></i></span>
+        <span v-if="refreshMsg" :class="refreshOk ? 'st-ok' : 'st-muted'">{{ refreshMsg }}</span>
       </div>
       <div v-if="error && ready" class="st-err">{{ error }}</div>
 
@@ -206,7 +199,6 @@ import {
   pobOpen,
   pobSelectNinja,
   pobNinjaRefresh,
-  pobNinjaAuto,
   slotLabel,
   fmtNum,
   type PobStatus,
@@ -283,32 +275,50 @@ async function choose(file: string) {
 }
 
 // --- poe.ninja "Refresh character" ---
+// Atziri no longer sends poe.ninja's "Refresh character" request itself (with
+// the player's login, on a timer): the ↻ button opens the character page in
+// the poe.ninja tab, the player clicks "Refresh character" there, and Atziri
+// reads the character again a little later (audit B5).
 const refreshing = shallowRef(false);
 const refreshMsg = shallowRef("");
 const refreshOk = shallowRef(false);
-const needLogin = shallowRef(false);
+let rereadRun = 0;
 async function ninjaRefresh() {
+  const c = status.value?.ninja;
+  if (!c) return;
+  const run = ++rereadRun;
+  openInHub(
+    `https://poe.ninja/poe2/profile/${encodeURIComponent(c.account)}/${encodeURIComponent(c.league)}/character/${encodeURIComponent(c.character)}`,
+    "ninja",
+  );
   refreshing.value = true;
-  refreshMsg.value = "";
-  needLogin.value = false;
+  refreshOk.value = false;
+  refreshMsg.value = tr(
+    "Page de ton perso ouverte dans l'onglet poe.ninja : clique « Refresh character » (connecté à poe.ninja). Atziri relit ton perso ensuite.",
+    "Your character page is open in the poe.ninja tab: click \"Refresh character\" (logged in to poe.ninja). Atziri reads your character again afterwards.",
+  );
   try {
-    const r = await pobNinjaRefresh();
-    status.value = r;
-    refreshOk.value = r.refresh === "ok";
-    needLogin.value = r.refresh === "login";
-    refreshMsg.value =
-      r.refresh === "ok"
-        ? tr("Perso actualisé.", "Character refreshed.")
-        : r.refresh === "login"
-          ? tr("Connecte-toi d'abord à poe.ninja dans l'onglet poe.ninja (icône profil en haut à droite > Log in), puis réessaie.", "Log in to poe.ninja first in the poe.ninja tab (profile icon top right > Log in), then try again.")
-          : r.refresh === "cooldown"
-            ? tr("poe.ninja limite les actualisations : réessaie dans quelques minutes.", "poe.ninja limits refreshes: try again in a few minutes.")
-            : tr("poe.ninja n'a pas pu actualiser le perso.", "poe.ninja could not refresh the character.");
+    // poe.ninja needs some time after the click: read again a few times
+    for (const wait of [20000, 40000, 60000, 120000]) {
+      await new Promise((r) => setTimeout(r, wait));
+      if (run !== rereadRun) return; // another click started over
+      const r = await pobNinjaRefresh();
+      status.value = r;
+      if (r.refresh === "ok") {
+        refreshOk.value = true;
+        refreshMsg.value = tr("Perso actualisé.", "Character refreshed.");
+        break;
+      }
+    }
+    if (!refreshOk.value)
+      refreshMsg.value = tr(
+        "Pas de nouvelle version sur poe.ninja pour l'instant : Atziri revérifie toutes les 5 min.",
+        "No newer version on poe.ninja yet: Atziri checks again every 5 min.",
+      );
   } catch (e) {
-    refreshOk.value = false;
     refreshMsg.value = (e as Error).message;
   } finally {
-    refreshing.value = false;
+    if (run === rereadRun) refreshing.value = false;
   }
   if (refreshOk.value) await refresh();
 }
@@ -316,16 +326,6 @@ async function ninjaRefresh() {
 async function refreshAll() {
   if (status.value?.selected === "ninja" && status.value.ninja) await ninjaRefresh();
   else await refresh();
-}
-async function setAuto(on: boolean) {
-  try {
-    status.value = await pobNinjaAuto(on);
-  } catch {
-    // ignore
-  }
-}
-function openNinjaLogin() {
-  openInHub("https://poe.ninja/poe2/builds", "ninja");
 }
 
 // --- character followed on poe.ninja ---
