@@ -52,14 +52,16 @@ function newSession(title: string): CraftSession {
   return { id: newId(), title, entries: [], firstAt: null, lastAt: null };
 }
 
-function load(): CraftState {
+function load(atLaunch = false): CraftState {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
     if (s && Array.isArray(s.sessions) && s.sessions.length) {
       return {
         sessions: s.sessions,
         currentId: s.currentId ?? s.sessions[0].id,
-        armedKey: s.armedKey ?? null,
+        // never armed at launch: a Shift + click must not be counted for a
+        // currency armed yesterday (audit C3)
+        armedKey: atLaunch ? null : (s.armedKey ?? null),
         paused: Boolean(s.paused),
         bases: Array.isArray(s.bases) ? s.bases : [],
         slots: s.slots && typeof s.slots === "object" ? s.slots : {},
@@ -79,7 +81,10 @@ function load(): CraftState {
   };
 }
 
-export const craft = shallowRef<CraftState>(load());
+// only the main overlay disarms at launch (not the detached window opening later)
+export const craft = shallowRef<CraftState>(
+  load(!new URLSearchParams(window.location.search).has("atziri")),
+);
 
 function save() {
   try {
@@ -449,13 +454,15 @@ export async function loadCatalog(force = false) {
     if (!items.length) return;
     // the Divine Orb itself is the unit
     for (const it of items) if (it.ref === "Divine Orb") it.divines = 1;
-    setRates(chaos, exalted);
+    setRates(chaos, exalted, Date.now());
     catalog.value = items;
     catalogAt.value = Date.now();
     // fresh prices for the currencies already in the sessions
     const price = new Map(items.map((i) => [i.key, i]));
     update((s) => {
       for (const sess of s.sessions) {
+        // a finished session keeps the prices it was closed with (audit C2)
+        if (sess.finishedAt) continue;
         for (const e of sess.entries) {
           const p = price.get(e.key);
           if (p) {
