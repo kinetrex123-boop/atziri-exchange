@@ -43,6 +43,12 @@
         <span v-if="slot"> ({{ slotLabel(slot.slot, isFr) }})</span>
       </div>
 
+      <!-- Atziri Exchange: some lines were not understood: say it before the numbers -->
+      <div v-if="state.unknown.length" class="pc-pad pc-partial">
+        <b>{{ tr("Comparaison partielle", "Partial comparison") }}</b>
+        · {{ tr(`${state.unknown.length} ligne(s) non prise(s) en compte :`, `${state.unknown.length} line(s) not taken into account:`) }}
+        {{ state.unknown.join(" · ") }}
+      </div>
       <div v-if="damageRows.length" class="pc-grp pc-grp-cols"><span class="pc-grp-t">{{ tr("Dégâts", "Damage") }}</span><span class="pc-colh">{{ tr("Équipé", "Equipped") }}</span><span></span><span class="pc-colh pc-colh-new">{{ tr("Cet objet", "This item") }}</span><span class="pc-colh">{{ tr("Écart", "Change") }}</span></div>
       <div v-for="r in damageRows" :key="r.label" class="pc-row">
         <span>{{ r.label }}</span>
@@ -97,10 +103,6 @@
       <div v-if="reqWarn" class="pc-pad pc-bad">{{ reqWarn }}</div>
       <div class="pc-verdict">
         <span :class="verdict.cls">{{ verdict.text }}</span>
-      </div>
-      <div v-if="state.unknown.length" class="pc-pad pc-muted pc-small">
-        {{ tr("Mods non pris en compte :", "Mods not taken into account:") }}
-        {{ state.unknown.join(" · ") }}
       </div>
     </template>
     </div>
@@ -320,6 +322,17 @@ const reqWarn = computed(() => {
 });
 
 const verdict = computed(() => {
+  const v = rawVerdict.value;
+  // some lines were left out: the verdict may be wrong, never show it as sure
+  if (state.value?.unknown.length)
+    return {
+      cls: "pc-partial",
+      text: v.text + tr(" (comparaison partielle)", " (partial comparison)"),
+    };
+  return v;
+});
+
+const rawVerdict = computed(() => {
   const main = damageRows.value[0];
   const dps = main && main.before ? (main.after - main.before) / main.before : 0;
   const ehp = slot.value && slot.value.before.TotalEHP
@@ -416,6 +429,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 }
 .pc-bad {
   color: #d9584a;
+}
+.pc-partial {
+  color: #e0a84f;
 }
 .pc-acc {
   color: theme("colors.blue.400");

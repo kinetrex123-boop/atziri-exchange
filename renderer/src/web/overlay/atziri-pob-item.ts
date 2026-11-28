@@ -55,6 +55,33 @@ function valuesFor(lines: string[], template: string): string[] | undefined {
   return undefined;
 }
 
+const placeholders = (s: string) => (s.match(/#/g) ?? []).length;
+
+/**
+ * English wording of the same mod. The French and English lists of wordings
+ * are not always in the same order nor of the same length, so the position
+ * is only trusted when the sign ("increased" / "reduced") and the number of
+ * values agree; otherwise the first wording with the same sign is taken.
+ * Undefined when none fits: the line is then reported as not understood
+ * rather than sent with the wrong sign.
+ */
+export function pickEnMatcher(
+  local: { string: string; negate?: boolean },
+  localIdx: number,
+  enMatchers: Array<{ string: string; negate?: boolean }>,
+) {
+  const negate = Boolean(local.negate);
+  const count = placeholders(local.string);
+  const fits = (m: { string: string; negate?: boolean }) =>
+    Boolean(m.negate) === negate && placeholders(m.string) === count;
+  const atIdx = localIdx >= 0 ? enMatchers[localIdx] : undefined;
+  if (atIdx && fits(atIdx)) return atIdx;
+  return (
+    enMatchers.find(fits) ??
+    enMatchers.find((m) => Boolean(m.negate) === negate)
+  );
+}
+
 function fill(template: string, values: string[]) {
   let i = 0;
   return template.replace(/#/g, () => values[i++] ?? "0");
@@ -68,16 +95,20 @@ function englishLine(
   const enStat = en.get(stat.stat.ref);
   if (!enStat) return undefined;
   const idx = stat.stat.matchers.indexOf(stat.translation);
-  const negate = Boolean(stat.translation.negate);
-  const enMatcher =
-    (idx >= 0 ? enStat.matchers[idx] : undefined) ??
-    enStat.matchers.find((m) => Boolean(m.negate) === negate) ??
-    enStat.matchers[0];
-  const count = (enMatcher.string.match(/#/g) ?? []).length;
+  const enMatcher = pickEnMatcher(stat.translation, idx, enStat.matchers);
+  if (!enMatcher) return undefined;
+  const count = placeholders(enMatcher.string);
   if (count === 0) return enMatcher.string;
-  let values = valuesFor(lines, stat.translation.string);
+  // the numbers of this very mod: the line the parser read it from first
+  // (a rune and a mod of the same stat must not share the rune's value)
+  let values = stat.sourceLine
+    ? valuesFor([stat.sourceLine], stat.translation.string)
+    : undefined;
   if ((!values || values.length !== count) && count === 1 && stat.roll) {
     values = [String(Math.abs(stat.roll.value))];
+  }
+  if (!values || values.length !== count) {
+    values = valuesFor(lines, stat.translation.string);
   }
   if (!values || values.length !== count) return undefined;
   return fill(enMatcher.string, values);
@@ -138,7 +169,12 @@ export async function toPobItem(item: ParsedItem, clipboard: string): Promise<Po
   const unknown: string[] = [];
   for (const mod of item.newMods) {
     const type = mod.info.type;
-    if (type === ModifierType.Pseudo || type === ModifierType.Skill) continue;
+    if (type === ModifierType.Pseudo) continue;
+    if (type === ModifierType.Skill) {
+      // skills granted by the item are not sent to Path of Building: say so
+      unknown.push(...mod.stats.map((s) => s.translation.string));
+      continue;
+    }
     const prefix =
       type === ModifierType.Augment || type === ModifierType.AddedAugment
         ? "{rune}"
@@ -167,6 +203,9 @@ export async function toPobItem(item: ParsedItem, clipboard: string): Promise<Po
       target.push(prefix + line);
     }
   }
+
+  // lines the overlay itself did not understand are missing too
+  for (const m of item.unknownModifiers) unknown.push(m.text);
 
   const rarity = RARITY[item.rarity ?? ItemRarity.Normal] ?? "NORMAL";
   const out: string[] = [`Rarity: ${rarity}`];

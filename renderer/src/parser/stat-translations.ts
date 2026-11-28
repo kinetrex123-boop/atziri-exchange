@@ -28,6 +28,9 @@ export interface ParsedStat {
     option?: number;
   };
   fromAddedAugment?: BaseType;
+  // Atziri Exchange: the copied line(s) this stat was read from (Ctrl + B
+  // takes its numbers from here, not from the first similar line of the item)
+  sourceLine?: string;
 }
 
 interface StatString {
@@ -211,9 +214,11 @@ export function tryParseTranslation(
       stat: found.stat,
       translation: found.matcher,
       roll,
+      sourceLine: stat.string, // Atziri Exchange
     };
   }
   if (backupParsedStat) {
+    backupParsedStat.sourceLine = stat.string; // Atziri Exchange
     backupParsedStat.roll = parseRoll(
       { stat: backupParsedStat.stat, matcher: backupParsedStat.translation },
       backupParsedCombination!,
