@@ -258,7 +258,7 @@ export async function startServer(
         (e as NodeJS.ErrnoException).code === "EADDRINUSE";
       if (!busy) throw e;
       if (attempt < 5) {
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         continue;
       }
       // still busy: start anyway on a free port, the page then says that the

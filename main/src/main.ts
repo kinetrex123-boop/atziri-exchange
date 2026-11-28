@@ -99,8 +99,12 @@ app.on("browser-window-created", (_e, win) => {
     // Atziri Exchange: the overlay closes itself when the game is closed
     // (unless "start with the game" is on: it then waits for the next game)
     // Atziri Exchange: poe.ninja character reads only while the game is open
-    poeWindow.onAttach(() => setPobGameRunning(true));
-    poeWindow.onGameClosed(() => setPobGameRunning(false), 5000);
+    poeWindow.onAttach(() => {
+      setPobGameRunning(true);
+    });
+    poeWindow.onGameClosed(() => {
+      setPobGameRunning(false);
+    }, 5000);
     poeWindow.onGameClosed(() => {
       if (isAutostartEnabled()) return;
       logger.write("info [Atziri] game closed, quitting the overlay.");

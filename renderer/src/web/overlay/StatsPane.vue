@@ -300,7 +300,7 @@ async function ninjaRefresh() {
   try {
     // poe.ninja needs some time after the click: read again a few times
     for (const wait of [20000, 40000, 60000, 120000]) {
-      await new Promise((r) => setTimeout(r, wait));
+      await new Promise((resolve) => setTimeout(resolve, wait));
       if (run !== rereadRun) return; // another click started over
       const r = await pobNinjaRefresh();
       status.value = r;
